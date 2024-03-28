@@ -14,6 +14,8 @@ import javax.validation.Valid;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import static ru.practicum.explore_with_me.stats.dto.consts.Constants.TIME_PATTERN;
+
 @Slf4j
 @RestController
 @RequiredArgsConstructor
@@ -29,8 +31,8 @@ public class StatsController {
 
     @GetMapping("/stats")
     public List<ViewStatsDto> getViewStats(
-            @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime start,
-            @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime end,
+            @RequestParam @DateTimeFormat(pattern = TIME_PATTERN) LocalDateTime start,
+            @RequestParam @DateTimeFormat(pattern = TIME_PATTERN) LocalDateTime end,
             @RequestParam(required = false) List<String> uris,
             @RequestParam(defaultValue = "false") boolean unique) {
         log.info("GET: /stats ");
