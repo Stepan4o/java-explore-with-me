@@ -29,7 +29,7 @@ public class ErrorHandler {
             log.warn(exception.getMessage());
             return new ErrorResponse(exception.getMessage());
         } else {
-            return new ErrorResponse("exception.getMessage()");
+            return new ErrorResponse(exception.getMessage());
         }
     }
 }
