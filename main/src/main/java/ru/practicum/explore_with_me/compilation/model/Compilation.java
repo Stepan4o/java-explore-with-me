@@ -1,11 +1,9 @@
 package ru.practicum.explore_with_me.compilation.model;
 
 import lombok.*;
-import ru.practicum.explore_with_me.event.model.Event;
 
 import javax.persistence.*;
 import java.util.List;
-import java.util.Set;
 
 @Entity
 @Table(name = "compilations")

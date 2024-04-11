@@ -11,25 +11,25 @@ import ru.practicum.explore_with_me.user.mapper.UserMapper;
 
 @UtilityClass
 public class EventMapper {
-    public EventFullDto toEventFullDto(Event event, long confirmedRequests) {
-        return EventFullDto.builder()
-                .id(event.getId())
-                .description(event.getDescription())
-                .annotation(event.getAnnotation())
-                .category((CategoryMapper.toCategoryDto(event.getCategory())))
-                .confirmedRequests(confirmedRequests)
-                .createdOn(event.getCreatedOn())
-                .eventDate(event.getEventDate())
-                .initiator(UserMapper.toUserShortDto(event.getInitiator()))
-                .location(event.getLocation())
-                .paid(event.getPaid())
-                .participantLimit(event.getParticipantLimit())
-                .publishedOn(event.getPublishedOn())
-                .requestModeration(event.getRequestModeration())
-                .state(event.getState())
-                .title(event.getTitle())
-                .build();
-    }
+//    public EventFullDto toEventFullDto(Event event, long confirmedRequests) {
+//        return EventFullDto.builder()
+//                .id(event.getId())
+//                .description(event.getDescription())
+//                .annotation(event.getAnnotation())
+//                .category((CategoryMapper.toCategoryDto(event.getCategory())))
+//                .confirmedRequests(confirmedRequests)
+//                .createdOn(event.getCreatedOn())
+//                .eventDate(event.getEventDate())
+//                .initiator(UserMapper.toUserShortDto(event.getInitiator()))
+//                .location(event.getLocation())
+//                .paid(event.getPaid())
+//                .participantLimit(event.getParticipantLimit())
+//                .publishedOn(event.getPublishedOn())
+//                .requestModeration(event.getRequestModeration())
+//                .state(event.getState())
+//                .title(event.getTitle())
+//                .build();
+//    }
 
     public EventFullDto toEventFullDto(Event event) {
         return EventFullDto.builder()
@@ -48,6 +48,7 @@ public class EventMapper {
                 .requestModeration(event.getRequestModeration())
                 .state(event.getState())
                 .title(event.getTitle())
+                .views(event.getViews())
                 .build();
     }
 

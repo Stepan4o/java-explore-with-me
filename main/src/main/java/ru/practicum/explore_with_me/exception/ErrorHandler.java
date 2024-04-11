@@ -76,4 +76,15 @@ public class ErrorHandler {
                 .timestamp(LocalDateTime.now())
                 .build();
     }
+
+    @ExceptionHandler
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ErrorResponse handeIncorrectlyMadeRequest(final IncorrectlyMadeRequest exception) {
+        return ErrorResponse.builder()
+                .status(HttpStatus.BAD_REQUEST.getReasonPhrase().toUpperCase())
+                .reason("Incorrectly made request.")
+                .message(exception.getMessage())
+                .timestamp(LocalDateTime.now())
+                .build();
+    }
 }

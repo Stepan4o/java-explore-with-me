@@ -78,17 +78,23 @@ public class CompilationServiceImpl implements CompilationService {
     }
 
     @Override
-    public List<CompilationDto> getCompilations(boolean pinned, int from, int size) {
+    public List<CompilationDto> getCompilations(Boolean pinned, int from, int size) {
         Pageable pageable = PageRequest.of(from / size, size);
-        List<Compilation> compilations = compilationRepository.findAllByPinnedEquals(pinned, pageable);
         List<CompilationDto> res = new ArrayList<>();
+        List<Compilation> compilations = new ArrayList<>();
+        List<EventShortDto> events = new ArrayList<>();
+
+        if (pinned != null) {
+            compilations = compilationRepository.findAllByPinnedEquals(pinned, pageable);
+        } else {
+            compilations = compilationRepository.findAll(pageable).getContent();
+        }
         for (Compilation compilation : compilations) {
-            List<EventShortDto> events = eventRepository.findAllByIdIn(compilation.getEvents()).stream()
+            events = eventRepository.findAllByIdIn(compilation.getEvents()).stream()
                     .map(EventMapper::toShortDto)
                     .collect(Collectors.toList());
             res.add(CompilationMapper.toDto(compilation, events));
         }
-
         return res;
     }
 

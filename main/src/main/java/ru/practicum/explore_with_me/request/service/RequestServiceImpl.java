@@ -2,6 +2,7 @@ package ru.practicum.explore_with_me.request.service;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import ru.practicum.explore_with_me.event.model.Event;
 import ru.practicum.explore_with_me.event.model.State;
 import ru.practicum.explore_with_me.event.repository.EventRepository;
@@ -20,6 +21,7 @@ import ru.practicum.explore_with_me.user.repository.UserRepository;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import static ru.practicum.explore_with_me.request.model.RequestStatus.*;
 import static ru.practicum.explore_with_me.request.model.RequestStatus.REJECTED;
@@ -57,7 +59,7 @@ public class RequestServiceImpl implements RequestService {
 
 //          если у события достигнут лимит запросов на участие - необходимо вернуть ошибку (Ожидается код ошибки 409)
         int limit = savedEvent.getParticipantLimit();
-        if (limit == 0 || limit == requestRepository.countByEventIdAndStatus(eventId, RequestStatus.CONFIRMED))
+        if (limit != 0 && limit == requestRepository.countByEventIdAndStatus(eventId, RequestStatus.CONFIRMED))
             throw new ConflictException("Participant limit is already reached");
 
         ParticipationRequest request = new ParticipationRequest();
@@ -66,7 +68,7 @@ public class RequestServiceImpl implements RequestService {
         request.setCreated(LocalDateTime.now());
 
 //  если для события отключена пре-модерация запросов на участие, то запрос должен автоматически перейти в состояние подтвержденного
-        if (savedEvent.getRequestModeration()) {
+        if (savedEvent.getRequestModeration() && savedEvent.getParticipantLimit() != 0) {
             request.setStatus(RequestStatus.PENDING);
         } else {
             request.setStatus(RequestStatus.CONFIRMED);
@@ -114,6 +116,35 @@ public class RequestServiceImpl implements RequestService {
             eventRepository.save(savedEvent);
         }
         return new EventRequestStatusUpdateResult(confirmedRequests, rejectedRequests);
+    }
+
+    @Override
+    public List<ParticipationRequestDto> getOwnerRequests(long userId) {
+        User owner = userRepository.findById(userId).orElseThrow(
+                ()-> new NotFoundException(String.format(
+                        ENTITY_NOT_FOUND, USER, userId
+                ))
+        );
+        return requestRepository.findAllByRequesterId(owner.getId()).stream()
+                .map(RequestMapper::toRequestDto)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ParticipationRequestDto> getOwnerEventRequests(long userId, long eventId) {
+        User owner = userRepository.findById(userId)
+                .orElseThrow(() -> new NotFoundException(String.format(
+                        ENTITY_NOT_FOUND, USER, userId
+                )));
+        Event ownerEvent = eventRepository.findByIdAndInitiatorId(eventId, owner.getId())
+                .orElseThrow(() -> new NotFoundException(String.format(
+                        ENTITY_NOT_FOUND, EVENT, eventId
+                )));
+
+        return requestRepository.findAllByEventId(ownerEvent.getId()).stream()
+                .map(RequestMapper::toRequestDto)
+                .collect(Collectors.toList());
     }
 
     @Override

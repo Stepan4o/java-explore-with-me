@@ -6,9 +6,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 @Builder
-@Getter
-@Setter
-@ToString
+@Data
 public class PublicSearchEventsParams {
     private String text;
     private List<Long> categories;

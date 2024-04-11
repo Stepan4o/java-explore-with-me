@@ -1,13 +1,16 @@
 package ru.practicum.explore_with_me.event.controller;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import ru.practicum.explore_with_me.event.dto.search.AdminSearchEventsParams;
 import ru.practicum.explore_with_me.event.dto.EventFullDto;
 import ru.practicum.explore_with_me.event.dto.UpdateEventRequest;
 import ru.practicum.explore_with_me.event.service.EventService;
+import ru.practicum.explore_with_me.utils.TimeFormatter;
 
 import javax.validation.Valid;
 import javax.validation.constraints.Min;
@@ -30,8 +33,10 @@ public class EventControllerAdmin {
             @RequestParam(required = false) List<Long> users,
             @RequestParam(required = false) List<String> states,
             @RequestParam(required = false) List<Long> categories,
-            @RequestParam(required = false) String rangeStart,
-            @RequestParam(required = false) String rangeEnd,
+            @RequestParam(required = false) @DateTimeFormat(pattern =
+                    TIME_PATTERN) LocalDateTime rangeStart,
+            @RequestParam(required = false) @DateTimeFormat(pattern =
+                    TIME_PATTERN) LocalDateTime rangeEnd,
             @RequestParam(defaultValue = "0") @Min(0) Integer from,
             @RequestParam(defaultValue = "10") @Min(1) Integer size
     ) {
@@ -41,8 +46,8 @@ public class EventControllerAdmin {
                 .users(users)
                 .states(states)
                 .categories(categories)
-                .rangeStart(LocalDateTime.parse(rangeStart, DateTimeFormatter.ofPattern(TIME_PATTERN)))
-                .rangeEnd(LocalDateTime.parse(rangeEnd, DateTimeFormatter.ofPattern(TIME_PATTERN)))
+                .rangeStart(rangeStart)
+                .rangeEnd(rangeEnd)
                 .from(from)
                 .size(size)
                 .build();

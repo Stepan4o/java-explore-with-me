@@ -18,12 +18,11 @@ public interface EventService {
 
     EventFullDto updateUserInfo(long userId, long eventId, UpdateEventRequest requestForUpdate);
 
-    // не нужен тут
-//    EventRequestStatusUpdateResult updateRequestsStatus(
-//            long userId,
-//            long eventId,
-//            EventRequestStatusUpdateRequest request
-//    );
     List<EventShortDto> searchEventsByPublicParams(PublicSearchEventsParams params);
+
     EventFullDto getEventById(long eventId, String ip);
+
+    EventFullDto getOwnerEventById(long userId, long eventId);
+
+    List<EventShortDto> getOwnerEvents(long userId, int from, int size);
 }

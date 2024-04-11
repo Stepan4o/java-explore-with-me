@@ -60,7 +60,7 @@ public class Event {
     @Column(name = "request_moderation")
     private Boolean requestModeration;
 
-    private long confirmedRequest;
+    private int confirmedRequest = 0;
 
     @Enumerated(EnumType.STRING)
     private State state;

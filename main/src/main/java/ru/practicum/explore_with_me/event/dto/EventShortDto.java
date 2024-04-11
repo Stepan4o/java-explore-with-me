@@ -17,7 +17,7 @@ import static ru.practicum.explore_with_me.stats.dto.consts.Constants.TIME_PATTE
 public class EventShortDto {
     private Long id;
     private CategoryDto category;
-    private Long confirmedRequests;
+    private Integer confirmedRequests;
     @JsonFormat(pattern = TIME_PATTERN)
     private LocalDateTime eventDate;
     private UserShortDto initiator;

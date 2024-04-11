@@ -1,13 +1,16 @@
 package ru.practicum.explore_with_me.event.controller;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import ru.practicum.explore_with_me.event.dto.EventFullDto;
 import ru.practicum.explore_with_me.event.dto.EventShortDto;
 import ru.practicum.explore_with_me.event.dto.search.PublicSearchEventsParams;
 import ru.practicum.explore_with_me.event.service.EventService;
+import ru.practicum.explore_with_me.utils.TimeFormatter;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.validation.constraints.Min;
@@ -31,8 +34,10 @@ public class EventControllerPublic {
             @RequestParam(required = false) String text,
             @RequestParam(required = false) List<Long> categories,
             @RequestParam(required = false) Boolean paid,
-            @RequestParam(required = false) String rangeStart,
-            @RequestParam(required = false) String rangeEnd,
+            @RequestParam(required = false) @DateTimeFormat(pattern =
+                    TIME_PATTERN) LocalDateTime rangeStart,
+            @RequestParam(required = false) @DateTimeFormat(pattern =
+                    TIME_PATTERN) LocalDateTime rangeEnd,
             @RequestParam(required = false) Boolean onlyAvailable,
             @RequestParam(required = false) String sort,
             @RequestParam(defaultValue = "0") @Min(0) Integer from,
@@ -45,8 +50,8 @@ public class EventControllerPublic {
                 .text(text)
                 .categories(categories)
                 .paid(paid)
-//                .rangeStart(LocalDateTime.parse(rangeStart, DateTimeFormatter.ofPattern(TIME_PATTERN)))
-//                .rangeEnd(LocalDateTime.parse(rangeEnd, DateTimeFormatter.ofPattern(TIME_PATTERN)))
+                .rangeStart(rangeStart)
+                .rangeEnd(rangeEnd)
                 .onlyAvailable(onlyAvailable)
                 .sort(sort)
                 .from(from)

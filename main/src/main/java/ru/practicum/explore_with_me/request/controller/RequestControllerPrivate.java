@@ -10,6 +10,7 @@ import ru.practicum.explore_with_me.request.service.RequestService;
 
 import javax.validation.constraints.Min;
 import javax.validation.constraints.NotNull;
+import java.util.List;
 
 @Slf4j
 @RestController
@@ -23,7 +24,7 @@ public class RequestControllerPrivate {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public ParticipationRequestDto addNewRequest(
-            @PathVariable Long userId,
+            @PathVariable @Min(1) Long userId,
             @NotNull @RequestParam(name = "eventId", required = false) Long eventId
     ) {
         log.info("POST: /users/{}/requests?eventId={}", userId, eventId);
@@ -37,5 +38,13 @@ public class RequestControllerPrivate {
     ) {
         log.info("/users/{}/requests/{}/cancel", userId, requestId);
         return requestService.cancelRequest(userId, requestId);
+    }
+
+    @GetMapping
+    public List<ParticipationRequestDto> getOwnerRequests(
+            @PathVariable @Min(1) Long userId
+    ) {
+        log.info("/users/{}/requests", userId);
+        return requestService.getOwnerRequests(userId);
     }
 }

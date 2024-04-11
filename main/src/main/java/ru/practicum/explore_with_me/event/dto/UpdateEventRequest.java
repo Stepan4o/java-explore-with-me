@@ -6,6 +6,8 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import ru.practicum.explore_with_me.location.LocationDto;
 
+import javax.validation.constraints.Future;
+import javax.validation.constraints.Min;
 import javax.validation.constraints.Size;
 import java.time.LocalDateTime;
 
@@ -25,12 +27,14 @@ public class UpdateEventRequest {
     private String description;
 
     @JsonFormat(pattern = TIME_PATTERN)
+    @Future
     private LocalDateTime eventDate;
 
     private LocationDto location;
 
     private Boolean paid;
 
+    @Min(0)
     private Integer participantLimit;
 
     private Boolean requestModeration;

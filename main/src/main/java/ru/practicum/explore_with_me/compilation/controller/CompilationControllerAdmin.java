@@ -15,6 +15,7 @@ import javax.validation.Valid;
 import javax.validation.constraints.Min;
 
 @Slf4j
+@Validated
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/admin/compilations")
@@ -24,7 +25,7 @@ public class CompilationControllerAdmin {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public CompilationDto addNewCompilation(
-            @RequestBody NewCompilationDto compilationDto
+            @RequestBody @Valid NewCompilationDto compilationDto
     ) {
         log.info("POST: /admin/compilations");
         return compilationService.addNewCompilation(compilationDto);

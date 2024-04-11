@@ -1,6 +1,7 @@
 package ru.practicum.explore_with_me.event.service;
 
 import lombok.RequiredArgsConstructor;
+import org.aspectj.weaver.ast.Not;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -21,6 +22,7 @@ import ru.practicum.explore_with_me.event.model.Event;
 import ru.practicum.explore_with_me.event.model.UserStateAction;
 import ru.practicum.explore_with_me.event.repository.EventRepository;
 import ru.practicum.explore_with_me.exception.ConflictException;
+import ru.practicum.explore_with_me.exception.IncorrectlyMadeRequest;
 import ru.practicum.explore_with_me.exception.InvalidEventDateException;
 import ru.practicum.explore_with_me.exception.NotFoundException;
 import ru.practicum.explore_with_me.location.Location;
@@ -32,13 +34,13 @@ import ru.practicum.explore_with_me.user.model.User;
 import ru.practicum.explore_with_me.user.repository.UserRepository;
 
 import javax.persistence.criteria.Predicate;
+import javax.validation.ConstraintViolationException;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 
-import static ru.practicum.explore_with_me.event.model.AdminStateAction.PUBLISH_EVENT;
-import static ru.practicum.explore_with_me.event.model.AdminStateAction.REJECT_EVENT;
+import static ru.practicum.explore_with_me.event.model.AdminStateAction.*;
 import static ru.practicum.explore_with_me.event.model.State.*;
 import static ru.practicum.explore_with_me.event.model.UserStateAction.CANCEL_REVIEW;
 import static ru.practicum.explore_with_me.event.model.UserStateAction.SEND_TO_REVIEW;
@@ -75,11 +77,18 @@ public class EventServiceImpl implements EventService {
         event.setLocation(location);
         event.setState(PENDING);
         event.setCreatedOn(LocalDateTime.now());
-        return EventMapper.toEventFullDto(eventRepository.save(event), 0);
+        return EventMapper.toEventFullDto(eventRepository.save(event));
     }
 
     @Override
     public List<EventFullDto> getFullInfo(AdminSearchEventsParams params) {
+        LocalDateTime start = params.getRangeStart();
+        LocalDateTime end = params.getRangeEnd();
+
+        if (start == null) params.setRangeStart(LocalDateTime.now());
+
+        if (end != null && start.isAfter(end))
+            throw new IncorrectlyMadeRequest("Start time can't be after End time");
 
         Pageable pageable = PageRequest.of(params.getFrom() / params.getSize(), params.getSize());
         Specification<Event> spec = Specification.where(null);
@@ -165,21 +174,12 @@ public class EventServiceImpl implements EventService {
             throw new ConflictException("Owner only can update event info");
         }
 
-        //TODO зарефакторить
-        if (savedEvent.getRequestModeration()) {
-            if (requestForUpdate.getStateAction() != null) {
-                UserStateAction action = UserStateAction.toEnum(requestForUpdate.getStateAction());
-                if (action.equals(SEND_TO_REVIEW)) savedEvent.setState(PENDING);
-                if (action.equals(CANCEL_REVIEW)) savedEvent.setState(CANCELED);
-            }
-        }
-        //TODO зарефакторить
-        if (!savedEvent.getRequestModeration() && savedEvent.getState() != PUBLISHED) {
-            if (requestForUpdate.getStateAction() != null) {
-                UserStateAction action = UserStateAction.toEnum(requestForUpdate.getStateAction());
-                if (action.equals(SEND_TO_REVIEW)) savedEvent.setState(PENDING);
-                if (action.equals(CANCEL_REVIEW)) savedEvent.setState(CANCELED);
-            }
+        if (savedEvent.getState() == PUBLISHED) throw new ConflictException("Event cant be modified");
+
+        if (requestForUpdate.getStateAction() != null) {
+            UserStateAction action = UserStateAction.toEnum(requestForUpdate.getStateAction());
+            if (action.equals(SEND_TO_REVIEW)) savedEvent.setState(PENDING);
+            if (action.equals(CANCEL_REVIEW)) savedEvent.setState(CANCELED);
         }
 
         if (requestForUpdate.getCategory() != null) {
@@ -199,7 +199,6 @@ public class EventServiceImpl implements EventService {
             else throw new ConflictException("eventDate cant be before then after two hours of start event");
         }
 
-
         updateEventFields(savedEvent, requestForUpdate);
 
         return EventMapper.toEventFullDto(savedEvent);
@@ -207,6 +206,15 @@ public class EventServiceImpl implements EventService {
 
     @Override
     public List<EventShortDto> searchEventsByPublicParams(PublicSearchEventsParams params) {
+
+        LocalDateTime start = params.getRangeStart();
+        LocalDateTime end = params.getRangeEnd();
+
+        if (start == null) params.setRangeStart(LocalDateTime.now());
+
+        if (end != null && start.isAfter(end))
+            throw new IncorrectlyMadeRequest("Start time can't be after End time");
+
         Specification<Event> spec = (root, query, criteriaBuilder) -> {
             List<Predicate> row = new ArrayList<>();
             if (params.getCategories() != null) {
@@ -236,18 +244,18 @@ public class EventServiceImpl implements EventService {
             }
             return criteriaBuilder.and(row.toArray(new Predicate[0]));
         };
+
         int from = params.getFrom(), size = params.getSize();
-        Pageable pageable;
-        switch (params.getSort()) {
-            case "EVENT_DATE":
-                pageable = PageRequest.of(from / size, size, Sort.Direction.ASC, "eventDate");
-                break;
-            case "VIEWS":
-                pageable = PageRequest.of(from / size, size, Sort.Direction.DESC, "views");
-                break;
-            default:
-                pageable = PageRequest.of(from / size, size);
-                break;
+        Pageable pageable = PageRequest.of(from / size, size);
+        if (params.getSort() != null) {
+            switch (params.getSort()) {
+                case "EVENT_DATE":
+                    pageable = PageRequest.of(from / size, size, Sort.Direction.ASC, "eventDate");
+                    break;
+                case "VIEWS":
+                    pageable = PageRequest.of(from / size, size, Sort.Direction.DESC, "views");
+                    break;
+            }
         }
         List<Event> events = eventRepository.findAll(spec, pageable);
         if (events.isEmpty()) {
@@ -303,22 +311,50 @@ public class EventServiceImpl implements EventService {
         return eventFullDtoWithViews;
     }
 
+    @Override
+    public EventFullDto getOwnerEventById(long userId, long eventId) {
+        User owner = userRepository.findById(userId).orElseThrow(
+                () -> new NotFoundException(String.format(
+                        ENTITY_NOT_FOUND, USER, userId
+                ))
+        );
+        Event ownerEvent = eventRepository.findByIdAndInitiatorId(eventId, owner.getId()).orElseThrow(
+                () -> new NotFoundException(String.format(
+                        ENTITY_NOT_FOUND, EVENT, eventId
+                ))
+        );
+        return EventMapper.toEventFullDto(ownerEvent);
+    }
+
+    @Override
+    public List<EventShortDto> getOwnerEvents(long userId, int from, int size) {
+        Pageable pageable = PageRequest.of(from / size, size);
+        User owner = userRepository.findById(userId).orElseThrow(
+                () -> new NotFoundException(String.format(
+                        ENTITY_NOT_FOUND, USER, userId
+                ))
+        );
+        List<Event> ownerEvents = eventRepository.findAllByInitiatorId(owner.getId(), pageable);
+        return ownerEvents.stream().map(EventMapper::toShortDto).collect(Collectors.toList());
+    }
+
     private Long parseViews(String body) {
         return Long.parseLong(body.substring(body.lastIndexOf("=") + 1, body.length() - 2));
     }
+
     private void addViewsToEvents(Map<Long, Event> eventsMap, String[] lines) {
         long eventId, views;
         List<Event> listOfSavedEvents = new ArrayList<>();
-        for (int i = 0; i < lines.length-1; i++) {
-             views = Long.parseLong(lines[i].substring(lines[i].lastIndexOf("=") + 1));
-             eventId = Long.parseLong(lines[i].substring(lines[i].lastIndexOf("/") + 1, lines[i].lastIndexOf(",")));
-             if (eventsMap.containsKey(eventId)) {
-                 Event savedEvent = eventsMap.get(eventId);
-                 savedEvent.setViews(views);
-                 listOfSavedEvents.add(savedEvent);
+        for (int i = 0; i < lines.length - 1; i++) {
+            views = Long.parseLong(lines[i].substring(lines[i].lastIndexOf("=") + 1));
+            eventId = Long.parseLong(lines[i].substring(lines[i].lastIndexOf("/") + 1, lines[i].lastIndexOf(",")));
+            if (eventsMap.containsKey(eventId)) {
+                Event savedEvent = eventsMap.get(eventId);
+                savedEvent.setViews(views);
+                listOfSavedEvents.add(savedEvent);
 
-                 eventsMap.put(eventId, savedEvent);
-             }
+                eventsMap.put(eventId, savedEvent);
+            }
         }
         eventRepository.saveAll(listOfSavedEvents);
     }
@@ -370,7 +406,7 @@ public class EventServiceImpl implements EventService {
 
     private void validatedEventDate(LocalDateTime actualDateTime) {
         if (actualDateTime.isBefore(LocalDateTime.now().plusHours(2))) {
-            throw new InvalidEventDateException(actualDateTime);
+            throw new IncorrectlyMadeRequest("Start time can't be after End time");
         }
     }
 }

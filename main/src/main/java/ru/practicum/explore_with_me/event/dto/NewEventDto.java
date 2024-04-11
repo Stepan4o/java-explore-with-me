@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import ru.practicum.explore_with_me.location.LocationDto;
 
+import javax.validation.constraints.Min;
 import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.Size;
 import java.time.LocalDateTime;
@@ -35,6 +36,7 @@ public class NewEventDto {
 
     private boolean paid = false;
 
+    @Min(0)
     private int participantLimit = 0;
 
     private boolean requestModeration = true;
