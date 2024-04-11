@@ -1,4 +1,4 @@
-package ru.practicum.explore_with_me.event.dto;
+package ru.practicum.explore_with_me.event.dto.search;
 
 import lombok.Builder;
 import lombok.Getter;

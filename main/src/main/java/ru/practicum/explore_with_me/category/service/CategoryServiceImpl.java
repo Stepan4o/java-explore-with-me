@@ -21,7 +21,7 @@ import static ru.practicum.explore_with_me.utils.Const.ENTITY_NOT_FOUND;
 
 @Service
 @RequiredArgsConstructor
-public class CategoryServiceIml implements CategoryService {
+public class CategoryServiceImpl implements CategoryService {
     private final CategoryRepository repository;
 
     @Override

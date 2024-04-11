@@ -4,7 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
-import ru.practicum.explore_with_me.event.dto.AdminSearchEventsParams;
+import ru.practicum.explore_with_me.event.dto.search.AdminSearchEventsParams;
 import ru.practicum.explore_with_me.event.dto.EventFullDto;
 import ru.practicum.explore_with_me.event.dto.UpdateEventRequest;
 import ru.practicum.explore_with_me.event.service.EventService;
@@ -22,7 +22,7 @@ import static ru.practicum.explore_with_me.stats.dto.consts.Constants.TIME_PATTE
 @RestController
 @RequestMapping("/admin/events")
 @RequiredArgsConstructor
-public class EventsControllerAdmin {
+public class EventControllerAdmin {
     private final EventService eventService;
 
     @GetMapping

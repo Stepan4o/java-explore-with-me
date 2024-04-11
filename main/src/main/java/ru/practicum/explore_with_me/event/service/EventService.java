@@ -1,11 +1,11 @@
 package ru.practicum.explore_with_me.event.service;
 
-import ru.practicum.explore_with_me.event.dto.AdminSearchEventsParams;
 import ru.practicum.explore_with_me.event.dto.EventFullDto;
+import ru.practicum.explore_with_me.event.dto.EventShortDto;
 import ru.practicum.explore_with_me.event.dto.NewEventDto;
 import ru.practicum.explore_with_me.event.dto.UpdateEventRequest;
-import ru.practicum.explore_with_me.request.dto.EventRequestStatusUpdateRequest;
-import ru.practicum.explore_with_me.request.dto.EventRequestStatusUpdateResult;
+import ru.practicum.explore_with_me.event.dto.search.AdminSearchEventsParams;
+import ru.practicum.explore_with_me.event.dto.search.PublicSearchEventsParams;
 
 import java.util.List;
 
@@ -18,9 +18,12 @@ public interface EventService {
 
     EventFullDto updateUserInfo(long userId, long eventId, UpdateEventRequest requestForUpdate);
 
-    EventRequestStatusUpdateResult updateRequestsStatus(
-            long userId,
-            long eventId,
-            EventRequestStatusUpdateRequest request
-    );
+    // не нужен тут
+//    EventRequestStatusUpdateResult updateRequestsStatus(
+//            long userId,
+//            long eventId,
+//            EventRequestStatusUpdateRequest request
+//    );
+    List<EventShortDto> searchEventsByPublicParams(PublicSearchEventsParams params);
+    EventFullDto getEventById(long eventId, String ip);
 }

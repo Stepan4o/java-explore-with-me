@@ -10,6 +10,7 @@ import ru.practicum.explore_with_me.event.dto.UpdateEventRequest;
 import ru.practicum.explore_with_me.event.service.EventService;
 import ru.practicum.explore_with_me.request.dto.EventRequestStatusUpdateRequest;
 import ru.practicum.explore_with_me.request.dto.EventRequestStatusUpdateResult;
+import ru.practicum.explore_with_me.request.service.RequestService;
 
 import javax.validation.Valid;
 import javax.validation.constraints.Min;
@@ -18,8 +19,9 @@ import javax.validation.constraints.Min;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/users/{userId}/events")
-public class EventsControllerPrivate {
+public class EventControllerPrivate {
     private final EventService eventService;
+    private final RequestService requestService;
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
@@ -47,7 +49,7 @@ public class EventsControllerPrivate {
             @PathVariable @Min(1) Long eventId,
             @RequestBody EventRequestStatusUpdateRequest request
     ) {
-        return eventService.updateRequestsStatus(userId, eventId, request);
+        return requestService.updateRequestsStatus(userId, eventId, request);
     }
 
     @GetMapping

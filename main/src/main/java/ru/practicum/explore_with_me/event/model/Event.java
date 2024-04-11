@@ -60,10 +60,14 @@ public class Event {
     @Column(name = "request_moderation")
     private Boolean requestModeration;
 
+    private long confirmedRequest;
+
     @Enumerated(EnumType.STRING)
     private State state;
 
     @Size(min = 3, max = 120)
     @Column(name = "title")
     private String title;
+
+    private long views = 0;
 }

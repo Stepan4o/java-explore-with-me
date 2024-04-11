@@ -7,6 +7,8 @@ import ru.practicum.explore_with_me.event.model.State;
 import ru.practicum.explore_with_me.event.repository.EventRepository;
 import ru.practicum.explore_with_me.exception.ConflictException;
 import ru.practicum.explore_with_me.exception.NotFoundException;
+import ru.practicum.explore_with_me.request.dto.EventRequestStatusUpdateRequest;
+import ru.practicum.explore_with_me.request.dto.EventRequestStatusUpdateResult;
 import ru.practicum.explore_with_me.request.dto.ParticipationRequestDto;
 import ru.practicum.explore_with_me.request.mapper.RequestMapper;
 import ru.practicum.explore_with_me.request.model.ParticipationRequest;
@@ -16,8 +18,11 @@ import ru.practicum.explore_with_me.user.model.User;
 import ru.practicum.explore_with_me.user.repository.UserRepository;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
-import static ru.practicum.explore_with_me.request.model.RequestStatus.CANCELED;
+import static ru.practicum.explore_with_me.request.model.RequestStatus.*;
+import static ru.practicum.explore_with_me.request.model.RequestStatus.REJECTED;
 import static ru.practicum.explore_with_me.utils.Const.*;
 
 @Service
@@ -67,6 +72,48 @@ public class RequestServiceImpl implements RequestService {
             request.setStatus(RequestStatus.CONFIRMED);
         }
         return RequestMapper.toRequestDto(requestRepository.save(request));
+    }
+    @Override
+    public EventRequestStatusUpdateResult updateRequestsStatus(
+            long userId,
+            long eventId,
+            EventRequestStatusUpdateRequest request
+    ) {
+        Event savedEvent = eventRepository.findById(eventId)
+                .orElseThrow(() -> new NotFoundException(String.format(
+                        ENTITY_NOT_FOUND, EVENT, eventId
+                )));
+        long requestLimit = requestRepository.countByEventIdAndStatus(eventId, CONFIRMED);
+        if (savedEvent.getParticipantLimit() <= requestLimit && savedEvent.getParticipantLimit() > 0) {
+            throw new ConflictException("participant limit was reached");
+        }
+        List<ParticipationRequest> requests = requestRepository.findAllByEventIdAndIdIn(
+                eventId,
+                request.getRequestIds()
+        );
+        RequestStatus newStatus = RequestStatus.convertStatus(request.getStatus());
+        List<ParticipationRequestDto> confirmedRequests = new ArrayList<>();
+        List<ParticipationRequestDto> rejectedRequests = new ArrayList<>();
+        for (ParticipationRequest req : requests) {
+            if (req.getStatus() != RequestStatus.PENDING) throw new ConflictException(
+                    "Заявка долбжна быть в статусе PENDING"
+            );
+            if (requestLimit < savedEvent.getParticipantLimit()) {
+                req.setStatus(newStatus);
+                if (newStatus == CONFIRMED) {
+                    confirmedRequests.add(RequestMapper.toDto(req));
+                    savedEvent.setConfirmedRequest(savedEvent.getConfirmedRequest() + 1);
+                } else if (newStatus == REJECTED) {
+                    rejectedRequests.add(RequestMapper.toDto(req));
+                }
+                requestLimit++;
+            } else {
+                req.setStatus(REJECTED);
+                rejectedRequests.add(RequestMapper.toDto(req));
+            }
+            eventRepository.save(savedEvent);
+        }
+        return new EventRequestStatusUpdateResult(confirmedRequests, rejectedRequests);
     }
 
     @Override

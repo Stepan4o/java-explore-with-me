@@ -1,16 +1,20 @@
 package ru.practicum.explore_with_me.event.service;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import ru.practicum.explore_with_me.category.model.Category;
 import ru.practicum.explore_with_me.category.repository.CategoryRepository;
-import ru.practicum.explore_with_me.event.dto.AdminSearchEventsParams;
 import ru.practicum.explore_with_me.event.dto.EventFullDto;
+import ru.practicum.explore_with_me.event.dto.EventShortDto;
 import ru.practicum.explore_with_me.event.dto.NewEventDto;
 import ru.practicum.explore_with_me.event.dto.UpdateEventRequest;
+import ru.practicum.explore_with_me.event.dto.search.AdminSearchEventsParams;
+import ru.practicum.explore_with_me.event.dto.search.PublicSearchEventsParams;
 import ru.practicum.explore_with_me.event.mapper.EventMapper;
 import ru.practicum.explore_with_me.event.model.AdminStateAction;
 import ru.practicum.explore_with_me.event.model.Event;
@@ -22,21 +26,14 @@ import ru.practicum.explore_with_me.exception.NotFoundException;
 import ru.practicum.explore_with_me.location.Location;
 import ru.practicum.explore_with_me.location.LocationMapper;
 import ru.practicum.explore_with_me.location.LocationRepository;
-import ru.practicum.explore_with_me.request.dto.EventRequestStatusUpdateRequest;
-import ru.practicum.explore_with_me.request.dto.EventRequestStatusUpdateResult;
-import ru.practicum.explore_with_me.request.dto.ParticipationRequestDto;
-import ru.practicum.explore_with_me.request.mapper.RequestMapper;
-import ru.practicum.explore_with_me.request.model.ParticipationRequest;
-import ru.practicum.explore_with_me.request.model.RequestStatus;
-import ru.practicum.explore_with_me.request.repository.RequestRepository;
+import ru.practicum.explore_with_me.stats.client.StatsClient;
+import ru.practicum.explore_with_me.stats.dto.EndpointHitDto;
 import ru.practicum.explore_with_me.user.model.User;
 import ru.practicum.explore_with_me.user.repository.UserRepository;
 
+import javax.persistence.criteria.Predicate;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 
@@ -45,8 +42,6 @@ import static ru.practicum.explore_with_me.event.model.AdminStateAction.REJECT_E
 import static ru.practicum.explore_with_me.event.model.State.*;
 import static ru.practicum.explore_with_me.event.model.UserStateAction.CANCEL_REVIEW;
 import static ru.practicum.explore_with_me.event.model.UserStateAction.SEND_TO_REVIEW;
-import static ru.practicum.explore_with_me.request.model.RequestStatus.CONFIRMED;
-import static ru.practicum.explore_with_me.request.model.RequestStatus.REJECTED;
 import static ru.practicum.explore_with_me.utils.Const.*;
 
 @Service
@@ -56,7 +51,9 @@ public class EventServiceImpl implements EventService {
     private final CategoryRepository categoryRepository;
     private final UserRepository userRepository;
     private final LocationRepository locationRepository;
-    private final RequestRepository requestRepository;
+    private final StatsClient statsClient;
+    @Value("${app}")
+    String app;
 
     @Override
     public EventFullDto add(NewEventDto newEventDto, Long userId) {
@@ -209,44 +206,127 @@ public class EventServiceImpl implements EventService {
     }
 
     @Override
-    public EventRequestStatusUpdateResult updateRequestsStatus(
-            long userId,
-            long eventId,
-            EventRequestStatusUpdateRequest request
-    ) {
-        Event savedEvent = eventRepository.findById(eventId)
+    public List<EventShortDto> searchEventsByPublicParams(PublicSearchEventsParams params) {
+        Specification<Event> spec = (root, query, criteriaBuilder) -> {
+            List<Predicate> row = new ArrayList<>();
+            if (params.getCategories() != null) {
+                row.add(root.get("category").get("id").in(params.getCategories()));
+            }
+            if (params.getPaid() != null) {
+                row.add(criteriaBuilder.equal(root.get("paid"), params.getPaid()));
+            }
+            if (params.getOnlyAvailable() != null && params.getOnlyAvailable()) {
+                row.add(criteriaBuilder.and(
+                        criteriaBuilder.greaterThanOrEqualTo(root.get("participantLimit"), 0),
+                        criteriaBuilder.lessThan(root.get("participantLimit"), root.get("confirmedRequest"))
+                ));
+            }
+            LocalDateTime current = LocalDateTime.now();
+            LocalDateTime startDateTime = Objects.requireNonNullElseGet(params.getRangeStart(), () -> current);
+            row.add(criteriaBuilder.greaterThan(root.get("eventDate"), startDateTime));
+            if (params.getRangeEnd() != null) {
+                row.add(criteriaBuilder.lessThan(root.get("eventDate"), params.getRangeEnd()));
+            }
+            if (params.getText() != null) {
+                String likeText = "%" + params.getText() + "%";
+                row.add(criteriaBuilder.or(
+                        criteriaBuilder.like(root.get("annotation"), likeText),
+                        criteriaBuilder.like(root.get("description"), likeText)
+                ));
+            }
+            return criteriaBuilder.and(row.toArray(new Predicate[0]));
+        };
+        int from = params.getFrom(), size = params.getSize();
+        Pageable pageable;
+        switch (params.getSort()) {
+            case "EVENT_DATE":
+                pageable = PageRequest.of(from / size, size, Sort.Direction.ASC, "eventDate");
+                break;
+            case "VIEWS":
+                pageable = PageRequest.of(from / size, size, Sort.Direction.DESC, "views");
+                break;
+            default:
+                pageable = PageRequest.of(from / size, size);
+                break;
+        }
+        List<Event> events = eventRepository.findAll(spec, pageable);
+        if (events.isEmpty()) {
+            return List.of();
+        } else {
+            List<String> uris = events.stream()
+                    .map(event -> String.format("/events/%s", event.getId()))
+                    .collect(Collectors.toList());
+            Optional<LocalDateTime> startTime = events.stream()
+                    .map(Event::getCreatedOn)
+                    .min(LocalDateTime::compareTo);
+            saveStats(params.getUri(), params.getIp());
+
+            String response = Objects.requireNonNull(statsClient.getStats(
+                    startTime.get(),
+                    LocalDateTime.now(),
+                    uris,
+                    true
+            ).getBody()).toString();
+
+            Map<Long, Event> eventsMap = new HashMap<>();
+            for (Event event : events) eventsMap.put(event.getId(), event);
+            String[] lines = response.split("}");
+            addViewsToEvents(eventsMap, lines);
+
+            return eventsMap.values().stream()
+                    .map(EventMapper::toShortDto)
+                    .collect(Collectors.toList());
+        }
+    }
+
+    @Override
+    public EventFullDto getEventById(long eventId, String ip) {
+        Event savedEvent = eventRepository.findByIdAndState(eventId, PUBLISHED)
                 .orElseThrow(() -> new NotFoundException(String.format(
                         ENTITY_NOT_FOUND, EVENT, eventId
                 )));
-        long requestLimit = requestRepository.countByEventIdAndStatus(eventId, CONFIRMED);
-        if (savedEvent.getParticipantLimit() <= requestLimit && savedEvent.getParticipantLimit() > 0) {
-            throw new ConflictException("participant limit was reached");
+        String uri = String.format("/events/%d", eventId);
+        saveStats(uri, ip);
+        String body = Objects.requireNonNull(statsClient.getStats(
+                savedEvent.getCreatedOn(),
+                LocalDateTime.now(),
+                List.of(uri),
+                true
+        ).getBody()).toString();
+
+        Long views = parseViews(body);
+        savedEvent.setViews(views);
+        eventRepository.save(savedEvent);
+        EventFullDto eventFullDtoWithViews = EventMapper.toEventFullDto(savedEvent);
+        eventFullDtoWithViews.setViews(views);
+
+        return eventFullDtoWithViews;
+    }
+
+    private Long parseViews(String body) {
+        return Long.parseLong(body.substring(body.lastIndexOf("=") + 1, body.length() - 2));
+    }
+    private void addViewsToEvents(Map<Long, Event> eventsMap, String[] lines) {
+        long eventId, views;
+        List<Event> listOfSavedEvents = new ArrayList<>();
+        for (int i = 0; i < lines.length-1; i++) {
+             views = Long.parseLong(lines[i].substring(lines[i].lastIndexOf("=") + 1));
+             eventId = Long.parseLong(lines[i].substring(lines[i].lastIndexOf("/") + 1, lines[i].lastIndexOf(",")));
+             if (eventsMap.containsKey(eventId)) {
+                 Event savedEvent = eventsMap.get(eventId);
+                 savedEvent.setViews(views);
+                 listOfSavedEvents.add(savedEvent);
+
+                 eventsMap.put(eventId, savedEvent);
+             }
         }
-        List<ParticipationRequest> requests = requestRepository.findAllByEventIdAndIdIn(
-                eventId,
-                request.getRequestIds()
-        );
-        RequestStatus newStatus = RequestStatus.convertStatus(request.getStatus());
-        List<ParticipationRequestDto> confirmedRequests = new ArrayList<>();
-        List<ParticipationRequestDto> rejectedRequests = new ArrayList<>();
-        for (ParticipationRequest req : requests) {
-            if (req.getStatus() != RequestStatus.PENDING) throw new ConflictException(
-                    "Заявка долбжна быть в статусе PENDING"
-            );
-            if (requestLimit < savedEvent.getParticipantLimit()) {
-                req.setStatus(newStatus);
-                if (newStatus == CONFIRMED) {
-                    confirmedRequests.add(RequestMapper.toDto(req));
-                } else if (newStatus == REJECTED) {
-                    rejectedRequests.add(RequestMapper.toDto(req));
-                }
-                requestLimit++;
-            } else {
-                req.setStatus(REJECTED);
-                rejectedRequests.add(RequestMapper.toDto(req));
-            }
-        }
-        return new EventRequestStatusUpdateResult(confirmedRequests, rejectedRequests);
+        eventRepository.saveAll(listOfSavedEvents);
+    }
+
+    private void saveStats(String uri, String ip) {
+        statsClient.saveHit(new EndpointHitDto(
+                app, uri, ip, LocalDateTime.now()
+        ));
     }
 
     private void updateEventFields(Event savedEvent, UpdateEventRequest newEvent) {

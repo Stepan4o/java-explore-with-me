@@ -3,6 +3,7 @@ package ru.practicum.explore_with_me.event.mapper;
 import lombok.experimental.UtilityClass;
 import ru.practicum.explore_with_me.category.mapper.CategoryMapper;
 import ru.practicum.explore_with_me.event.dto.EventFullDto;
+import ru.practicum.explore_with_me.event.dto.EventShortDto;
 import ru.practicum.explore_with_me.event.dto.NewEventDto;
 import ru.practicum.explore_with_me.event.model.Event;
 import ru.practicum.explore_with_me.location.LocationMapper;
@@ -36,7 +37,7 @@ public class EventMapper {
                 .description(event.getDescription())
                 .annotation(event.getAnnotation())
                 .category((CategoryMapper.toCategoryDto(event.getCategory())))
-//                .confirmedRequests(confirmedRequests)
+                .confirmedRequests(event.getConfirmedRequest())
                 .createdOn(event.getCreatedOn())
                 .eventDate(event.getEventDate())
                 .initiator(UserMapper.toUserShortDto(event.getInitiator()))
@@ -62,5 +63,20 @@ public class EventMapper {
                 .title(newEventDto.getTitle())
                 .annotation(newEventDto.getAnnotation())
                 .build();
+    }
+
+    public EventShortDto toShortDto(Event event) {
+        EventShortDto shortDto = new EventShortDto();
+        shortDto.setId(event.getId());
+        shortDto.setAnnotation(event.getAnnotation());
+        shortDto.setCategory(CategoryMapper.toCategoryDto(event.getCategory()));
+        shortDto.setConfirmedRequests(event.getConfirmedRequest());
+        shortDto.setEventDate(event.getEventDate());
+        shortDto.setInitiator(UserMapper.toUserShortDto(event.getInitiator()));
+        shortDto.setPaid(event.getPaid());
+        shortDto.setTitle(event.getTitle());
+        shortDto.setViews(event.getViews());
+
+        return shortDto;
     }
 }

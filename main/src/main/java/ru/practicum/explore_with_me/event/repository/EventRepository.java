@@ -7,6 +7,8 @@ import ru.practicum.explore_with_me.event.model.Event;
 import ru.practicum.explore_with_me.event.model.State;
 
 import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 
 public interface EventRepository extends JpaRepository<Event, Long> {
     boolean existsByIdAndInitiatorId(long eventId, long userId);
@@ -14,4 +16,8 @@ public interface EventRepository extends JpaRepository<Event, Long> {
     boolean existsByIdAndState(long eventId, State state);
 
     List<Event> findAll(Specification<Event> specification, Pageable pageable);
+    List<Event> findAllByIdIn(List<Long> ids);
+
+    Optional<Event> findByIdAndState(long eventId, State state);
+
 }
