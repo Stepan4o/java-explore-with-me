@@ -53,7 +53,8 @@ public class ErrorHandler {
             MethodArgumentNotValidException.class,
             MethodArgumentTypeMismatchException.class,
             ConstraintViolationException.class,
-            IncorrectStatusException.class
+            IncorrectStatusException.class,
+            IncorrectDateTime.class
     })
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ErrorResponse handleConstraintViolationException(final Exception exception) {

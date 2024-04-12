@@ -21,6 +21,7 @@ import ru.practicum.explore_with_me.event.model.Event;
 import ru.practicum.explore_with_me.event.model.UserStateAction;
 import ru.practicum.explore_with_me.event.repository.EventRepository;
 import ru.practicum.explore_with_me.exception.ConflictException;
+import ru.practicum.explore_with_me.exception.IncorrectDateTime;
 import ru.practicum.explore_with_me.exception.NotFoundException;
 import ru.practicum.explore_with_me.location.Location;
 import ru.practicum.explore_with_me.location.LocationMapper;
@@ -193,7 +194,7 @@ public class EventServiceImpl implements EventService {
         if (start == null) params.setRangeStart(LocalDateTime.now());
 
         if (end != null && Objects.requireNonNull(start).isAfter(end))
-            throw new ConflictException("Start time can't be after End time");
+            throw new IncorrectDateTime("Start time can't be after End time");
 
         Specification<Event> spec = (root, query, criteriaBuilder) -> {
             List<Predicate> row = new ArrayList<>();
@@ -213,7 +214,7 @@ public class EventServiceImpl implements EventService {
                 ));
             }
             LocalDateTime current = LocalDateTime.now();
-            LocalDateTime startDateTime = Objects.requireNonNullElseGet(params.getRangeStart(), () -> current);
+            LocalDateTime startDateTime = Objects.requireNonNullElse(params.getRangeStart(), current);
             row.add(criteriaBuilder.greaterThan(root.get("eventDate"), startDateTime));
             if (params.getRangeEnd() != null) {
                 row.add(criteriaBuilder.lessThan(root.get("eventDate"), params.getRangeEnd()));
@@ -395,7 +396,7 @@ public class EventServiceImpl implements EventService {
 
     private void validatedEventDate(LocalDateTime actualDateTime) {
         if (actualDateTime.isBefore(LocalDateTime.now().plusHours(2))) {
-            throw new ConflictException("Event date can't be earlier than two hours from the current moment");
+            throw new IncorrectDateTime("Event date can't be earlier than two hours from the current moment");
         }
     }
 
