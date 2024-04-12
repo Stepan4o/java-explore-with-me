@@ -18,5 +18,6 @@ public interface RequestService {
     );
 
     List<ParticipationRequestDto> getOwnerRequests(long userId);
+
     List<ParticipationRequestDto> getOwnerEventRequests(long userId, long eventId);
 }

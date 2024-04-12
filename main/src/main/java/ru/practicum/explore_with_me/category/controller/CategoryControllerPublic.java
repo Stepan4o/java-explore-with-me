@@ -29,7 +29,7 @@ public class CategoryControllerPublic {
             @RequestParam(defaultValue = "0") @Min(0) Integer from,
             @RequestParam(defaultValue = "10") @Min(1) Integer size
     ) {
-        log.info("GET: /categories");
+        log.info("GET: /categories&from={}&size={}", from, size);
         return service.getCategories(from, size);
     }
 }

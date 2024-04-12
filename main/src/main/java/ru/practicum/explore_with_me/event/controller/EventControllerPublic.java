@@ -1,6 +1,5 @@
 package ru.practicum.explore_with_me.event.controller;
 
-import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -10,12 +9,10 @@ import ru.practicum.explore_with_me.event.dto.EventFullDto;
 import ru.practicum.explore_with_me.event.dto.EventShortDto;
 import ru.practicum.explore_with_me.event.dto.search.PublicSearchEventsParams;
 import ru.practicum.explore_with_me.event.service.EventService;
-import ru.practicum.explore_with_me.utils.TimeFormatter;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.validation.constraints.Min;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 import static ru.practicum.explore_with_me.stats.dto.consts.Constants.TIME_PATTERN;
@@ -43,7 +40,7 @@ public class EventControllerPublic {
             @RequestParam(defaultValue = "0") @Min(0) Integer from,
             @RequestParam(defaultValue = "10") @Min(1) Integer size
     ) {
-        log.info("GET: /events&text={}&categories={}&paid={}" +
+        log.debug("GET: /events&text={}&categories={}&paid={}" +
                         "&rangeStart={}&rangeEnd={}&onlyAvailable={}&sort={}&from={}&size={}",
                 text, categories, paid, rangeStart, rangeEnd, onlyAvailable, sort, from, size);
         PublicSearchEventsParams params = PublicSearchEventsParams.builder()

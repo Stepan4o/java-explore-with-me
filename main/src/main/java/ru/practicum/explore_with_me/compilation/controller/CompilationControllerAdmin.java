@@ -5,7 +5,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
-import ru.practicum.explore_with_me.category.dto.NewCategoryDto;
 import ru.practicum.explore_with_me.compilation.dto.CompilationDto;
 import ru.practicum.explore_with_me.compilation.dto.NewCompilationDto;
 import ru.practicum.explore_with_me.compilation.dto.UpdateCompilationRequest;
@@ -27,7 +26,7 @@ public class CompilationControllerAdmin {
     public CompilationDto addNewCompilation(
             @RequestBody @Valid NewCompilationDto compilationDto
     ) {
-        log.info("POST: /admin/compilations");
+        log.debug("POST: /admin/compilations");
         return compilationService.addNewCompilation(compilationDto);
     }
 
@@ -36,7 +35,7 @@ public class CompilationControllerAdmin {
     public void deleteCompilationById(
             @PathVariable @Min(1) Long compId
     ) {
-        log.info("DELETE: /admin/compilations/{}", compId);
+        log.debug("DELETE: /admin/compilations/{}", compId);
         compilationService.deleteCompilationById(compId);
     }
 
@@ -45,7 +44,7 @@ public class CompilationControllerAdmin {
             @RequestBody @Valid UpdateCompilationRequest updateRequest,
             @PathVariable @Min(1) Long compId
     ) {
-        log.info("PATCH: /admin/compilations/{}", compId);
+        log.debug("PATCH: /admin/compilations/{}", compId);
         return compilationService.updateCompilationInfo(compId, updateRequest);
     }
 

@@ -41,11 +41,7 @@ public class CompilationServiceImpl implements CompilationService {
 
     @Override
     public CompilationDto updateCompilationInfo(long compId, UpdateCompilationRequest updateRequest) {
-        Compilation savedComp = compilationRepository.findById(compId).orElseThrow(
-                () -> new NotFoundException(String.format(
-                        ENTITY_NOT_FOUND, COMPILATION, compId
-                ))
-        );
+        Compilation savedComp = getCompilationIfExists(compId);
         List<Event> savedEventsForUpdate = eventRepository.findAllByIdIn(updateRequest.getEvents());
         savedComp.setEvents(savedEventsForUpdate.stream()
                 .map(Event::getId)
@@ -65,32 +61,28 @@ public class CompilationServiceImpl implements CompilationService {
     @Override
     @Transactional(readOnly = true)
     public CompilationDto getCompilationById(long compilationId) {
-        Compilation savedCompilation = compilationRepository.findById(compilationId).orElseThrow(
-                () -> new NotFoundException(String.format(
-                        ENTITY_NOT_FOUND, COMPILATION, compilationId
-                ))
-        );
-        List<Event> compilationEvents = eventRepository.findAllByIdIn(savedCompilation.getEvents());
-        return CompilationMapper.toDto(savedCompilation, compilationEvents.stream()
+        Compilation savedCompilation = getCompilationIfExists(compilationId);
+        List<EventShortDto> compilationEvents = eventRepository.findAllByIdIn(savedCompilation.getEvents()).stream()
                 .map(EventMapper::toShortDto)
-                .collect(Collectors.toList())
-        );
+                .collect(Collectors.toList());
+
+        return CompilationMapper.toDto(savedCompilation, compilationEvents);
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<CompilationDto> getCompilations(Boolean pinned, int from, int size) {
         Pageable pageable = PageRequest.of(from / size, size);
         List<CompilationDto> res = new ArrayList<>();
-        List<Compilation> compilations = new ArrayList<>();
-        List<EventShortDto> events = new ArrayList<>();
+        List<Compilation> compilations;
 
-        if (pinned != null) {
+        if (pinned != null)
             compilations = compilationRepository.findAllByPinnedEquals(pinned, pageable);
-        } else {
+        else
             compilations = compilationRepository.findAll(pageable).getContent();
-        }
+
         for (Compilation compilation : compilations) {
-            events = eventRepository.findAllByIdIn(compilation.getEvents()).stream()
+            List<EventShortDto> events = eventRepository.findAllByIdIn(compilation.getEvents()).stream()
                     .map(EventMapper::toShortDto)
                     .collect(Collectors.toList());
             res.add(CompilationMapper.toDto(compilation, events));
@@ -101,10 +93,18 @@ public class CompilationServiceImpl implements CompilationService {
     @Override
     public void deleteCompilationById(long compId) {
         if (compilationRepository.existsById(compId)) compilationRepository.deleteById(compId);
-        else throw new NotFoundException(
-                String.format(ENTITY_NOT_FOUND, COMPILATION, compId)
-        );
+        else throw new NotFoundException(String.format(
+                ENTITY_NOT_FOUND, COMPILATION, compId
+        ));
 
-//        compilationRepository.deleteById(compId);
+    }
+
+    private Compilation getCompilationIfExists(long compId) {
+        return compilationRepository.findById(compId).orElseThrow(
+                () -> new NotFoundException(String.format(
+                        ENTITY_NOT_FOUND, COMPILATION, compId
+                ))
+        );
     }
 }
+

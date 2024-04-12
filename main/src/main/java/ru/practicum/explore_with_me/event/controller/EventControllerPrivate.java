@@ -31,7 +31,7 @@ public class EventControllerPrivate {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public EventFullDto addNewEvent(
-            @PathVariable Long userId,
+            @PathVariable @Min(1) Long userId,
             @RequestBody @Valid NewEventDto newEventDto
     ) {
         log.info("POST: /users/{}/events", userId);
@@ -39,22 +39,22 @@ public class EventControllerPrivate {
     }
 
     @PatchMapping("/{eventId}")
-    public EventFullDto updateEvent(
+    public EventFullDto updateOwnerEventById(
             @PathVariable @Min(1) Long userId,
             @PathVariable @Min(1) Long eventId,
             @RequestBody @Valid UpdateEventRequest requestForUpdate
     ) {
-        log.info("PATCH: /users/{}/events/{}", userId, eventId);
-        return eventService.updateUserInfo(userId, eventId, requestForUpdate);
+        log.debug("PATCH: /users/{}/events/{}", userId, eventId);
+        return eventService.updateOwnerEvent(userId, eventId, requestForUpdate);
     }
 
     @PatchMapping("/{eventId}/requests")
-    public EventRequestStatusUpdateResult updateRequestsStatus(
+    public EventRequestStatusUpdateResult updateRequestsStatusByOwner(
             @PathVariable @Min(1) Long userId,
             @PathVariable @Min(1) Long eventId,
             @RequestBody EventRequestStatusUpdateRequest request
     ) {
-        log.info("GET: /users/{}/events/{}/requests", userId, eventId);
+        log.debug("GET: /users/{}/events/{}/requests", userId, eventId);
         return requestService.updateRequestsStatus(userId, eventId, request);
     }
 
@@ -64,15 +64,16 @@ public class EventControllerPrivate {
             @RequestParam(defaultValue = "0") @Min(0) Integer from,
             @RequestParam(defaultValue = "10") @Min(1) Integer size
     ) {
-        log.info("GET: /users/{}/events?from={}&size={}", userId, from, size);
+        log.debug("GET: /users/{}/events?from={}&size={}", userId, from, size);
         return eventService.getOwnerEvents(userId, from, size);
     }
 
     @GetMapping("/{eventId}")
-    public EventFullDto getEventById(@PathVariable @Min(1) Long userId,
-                                     @PathVariable @Min(1) Long eventId
+    public EventFullDto getOwnerEventById(
+            @PathVariable @Min(1) Long userId,
+            @PathVariable @Min(1) Long eventId
     ) {
-        log.info("GET: /users/{}/events/{}/requests", userId, eventId);
+        log.info("GET: /users/{}/events/{}", userId, eventId);
         return eventService.getOwnerEventById(userId, eventId);
     }
 
@@ -81,7 +82,7 @@ public class EventControllerPrivate {
             @PathVariable @Min(1) Long userId,
             @PathVariable @Min(1) Long eventId
     ) {
-        log.info("GET: /users/{}/events/{}/requests", userId, eventId);
+        log.debug("GET: /users/{}/events/{}/requests", userId, eventId);
         return requestService.getOwnerEventRequests(userId, eventId);
     }
 }

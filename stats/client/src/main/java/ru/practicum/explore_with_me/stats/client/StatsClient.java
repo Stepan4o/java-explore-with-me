@@ -13,14 +13,12 @@ import ru.practicum.explore_with_me.stats.dto.EndpointHitDto;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 @Service
 public class StatsClient {
     @Value("${client.url}")
-    private  String serverUrl;
+    private String serverUrl;
     private final RestTemplate rest;
     private final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 

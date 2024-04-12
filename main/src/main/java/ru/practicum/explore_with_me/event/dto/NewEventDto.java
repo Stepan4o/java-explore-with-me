@@ -6,9 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import ru.practicum.explore_with_me.location.LocationDto;
 
-import javax.validation.constraints.Min;
-import javax.validation.constraints.NotBlank;
-import javax.validation.constraints.Size;
+import javax.validation.constraints.*;
 import java.time.LocalDateTime;
 
 import static ru.practicum.explore_with_me.stats.dto.consts.Constants.TIME_PATTERN;
@@ -31,12 +29,11 @@ public class NewEventDto {
     @JsonFormat(pattern = TIME_PATTERN)
     private LocalDateTime eventDate;
 
-    //    @NotNull
     private LocationDto location;
 
     private boolean paid = false;
 
-    @Min(0)
+    @PositiveOrZero
     private int participantLimit = 0;
 
     private boolean requestModeration = true;

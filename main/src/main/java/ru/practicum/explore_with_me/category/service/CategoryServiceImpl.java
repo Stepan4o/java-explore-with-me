@@ -10,10 +10,11 @@ import ru.practicum.explore_with_me.category.dto.NewCategoryDto;
 import ru.practicum.explore_with_me.category.mapper.CategoryMapper;
 import ru.practicum.explore_with_me.category.model.Category;
 import ru.practicum.explore_with_me.category.repository.CategoryRepository;
+import ru.practicum.explore_with_me.event.repository.EventRepository;
+import ru.practicum.explore_with_me.exception.ConflictException;
 import ru.practicum.explore_with_me.exception.NotFoundException;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 import static ru.practicum.explore_with_me.utils.Const.CATEGORY;
@@ -23,6 +24,7 @@ import static ru.practicum.explore_with_me.utils.Const.ENTITY_NOT_FOUND;
 @RequiredArgsConstructor
 public class CategoryServiceImpl implements CategoryService {
     private final CategoryRepository repository;
+    private final EventRepository eventRepository;
 
     @Override
     public CategoryDto add(NewCategoryDto newCategoryDto) {
@@ -32,30 +34,32 @@ public class CategoryServiceImpl implements CategoryService {
 
     @Override
     public void remove(long id) {
-        if (repository.existsById(id)) repository.deleteById(id);
-        else throw new NotFoundException(String.format(
-                ENTITY_NOT_FOUND, CATEGORY, id
-        ));
+        if (repository.existsById(id)) {
+            if (eventRepository.existsByCategoryId(id)) {
+                throw new ConflictException(String.format(
+                        "%s is not empty", CATEGORY
+                ));
+            } else {
+                repository.deleteById(id);
+            }
+        } else {
+            throw new NotFoundException(String.format(
+                    ENTITY_NOT_FOUND, CATEGORY, id
+            ));
+        }
     }
 
     @Override
     public CategoryDto update(long id, NewCategoryDto newCategory) {
-        Category category = repository.findById(id)
-                .orElseThrow(() -> new NotFoundException(String.format(
-                        ENTITY_NOT_FOUND, CATEGORY, id
-                )));
-        category.setName(newCategory.getName());
-        return CategoryMapper.toCategoryDto(repository.save(category));
+        Category savedCategory = getCategoryIfExists(id);
+        savedCategory.setName(newCategory.getName());
+        return CategoryMapper.toCategoryDto(repository.save(savedCategory));
     }
 
     @Override
     @Transactional(readOnly = true)
     public CategoryDto getById(long id) {
-        Optional<Category> category = repository.findById(id);
-        return CategoryMapper.toCategoryDto(category.orElseThrow(
-                () -> new NotFoundException(String.format(
-                        ENTITY_NOT_FOUND, CATEGORY, id
-                ))));
+        return CategoryMapper.toCategoryDto(getCategoryIfExists(id));
     }
 
     @Override
@@ -65,5 +69,12 @@ public class CategoryServiceImpl implements CategoryService {
         return repository.findAll(pageable).stream()
                 .map(CategoryMapper::toCategoryDto)
                 .collect(Collectors.toList());
+    }
+
+    private Category getCategoryIfExists(long catId) {
+        return repository.findById(catId)
+                .orElseThrow(() -> new NotFoundException(String.format(
+                        ENTITY_NOT_FOUND, CATEGORY, catId
+                )));
     }
 }

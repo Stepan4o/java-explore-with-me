@@ -1,36 +1,31 @@
 package ru.practicum.explore_with_me.exception;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import javax.validation.ConstraintViolationException;
 import java.time.LocalDateTime;
+import java.util.Objects;
 
+@Slf4j
 @RestControllerAdvice
 public class ErrorHandler {
 
-    // TODO требуется суровый рефакторинг
-
-    @ExceptionHandler
+    @ExceptionHandler({
+            DataIntegrityViolationException.class,
+            ConflictException.class
+    })
     @ResponseStatus(HttpStatus.CONFLICT)
     public ErrorResponse handleInvalidEmail(
-            final DataIntegrityViolationException exception
-    ) {
-        return ErrorResponse.builder()
-                .status(HttpStatus.CONFLICT.getReasonPhrase().toUpperCase())
-                .reason("Integrity constraint has been violated.")
-                .message(exception.getMessage())
-                .timestamp(LocalDateTime.now())
-                .build();
-    }
-
-    @ExceptionHandler
-    @ResponseStatus(HttpStatus.CONFLICT)
-    public ErrorResponse handleInvalidEmail(
-            final ConflictException exception
+            final RuntimeException exception
     ) {
         return ErrorResponse.builder()
                 .status(HttpStatus.CONFLICT.getReasonPhrase().toUpperCase())
@@ -53,37 +48,35 @@ public class ErrorHandler {
                 .build();
     }
 
-    @ExceptionHandler
-    @ResponseStatus(HttpStatus.CONFLICT)
-    public ErrorResponse handleInvalidActualTimeException(
-            final InvalidEventDateException exception
-    ) {
-        return ErrorResponse.builder()
-                .status(HttpStatus.FORBIDDEN.getReasonPhrase().toUpperCase())
-                .reason("For the requested operation the conditions are not met.")
-                .message(exception.getMessage())
-                .timestamp(LocalDateTime.now())
-                .build();
-    }
-
-    @ExceptionHandler
+    @ExceptionHandler({
+            MissingServletRequestParameterException.class,
+            MethodArgumentNotValidException.class,
+            MethodArgumentTypeMismatchException.class,
+            ConstraintViolationException.class,
+            IncorrectStatusException.class
+    })
     @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public ErrorResponse handleConstraintViolationException(final ConstraintViolationException exception) {
-        return ErrorResponse.builder()
-                .status(HttpStatus.BAD_REQUEST.getReasonPhrase().toUpperCase())
-                .reason("Incorrectly made request.")
-                .message(exception.getMessage())
-                .timestamp(LocalDateTime.now())
-                .build();
-    }
+    public ErrorResponse handleConstraintViolationException(final Exception exception) {
+        String message;
+        String status = HttpStatus.BAD_REQUEST.getReasonPhrase().toUpperCase();
+        String reason = "Incorrectly made request.";
 
-    @ExceptionHandler
-    @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public ErrorResponse handeIncorrectlyMadeRequest(final IncorrectlyMadeRequest exception) {
+        if (exception instanceof MissingServletRequestParameterException) {
+            String param = ((MissingServletRequestParameterException) exception).getParameterName();
+            log.error("Incorrect input parameter: '{}'", param);
+            message = String.format("Incorrect input parameter: %s", param);
+        } else if (exception instanceof MethodArgumentNotValidException) {
+            FieldError error = Objects.requireNonNull(((MethodArgumentNotValidException) exception).getFieldError());
+            log.error("Invalid input '{}' -> {}", error.getField(), error.getDefaultMessage());
+            message = String.format("Incorrect input data %s -> %s", error.getField(), error.getDefaultMessage());
+        } else {
+            log.info(exception.getMessage());
+            message = exception.getMessage();
+        }
         return ErrorResponse.builder()
-                .status(HttpStatus.BAD_REQUEST.getReasonPhrase().toUpperCase())
-                .reason("Incorrectly made request.")
-                .message(exception.getMessage())
+                .status(status)
+                .reason(reason)
+                .message(message)
                 .timestamp(LocalDateTime.now())
                 .build();
     }

@@ -20,9 +20,9 @@ public class CompilationControllerPublic {
 
     @GetMapping("/{compId}")
     public CompilationDto getCompilationById(
-            @PathVariable @Min(1) long compId
+            @PathVariable @Min(1) Long compId
     ) {
-        log.info("GET: /compilations/{}", compId);
+        log.debug("GET: /compilations/{}", compId);
         return compilationService.getCompilationById(compId);
     }
 
@@ -32,7 +32,7 @@ public class CompilationControllerPublic {
             @RequestParam(defaultValue = "0") @Min(0) Integer from,
             @RequestParam(defaultValue = "10") @Min(1) Integer size
     ) {
-        log.info("GET: /compilations?pinned={}&from={}&size={}", pinned, from, size);
+        log.debug("GET: /compilations?pinned={}&from={}&size={}", pinned, from, size);
         return compilationService.getCompilations(pinned, from, size);
     }
 }

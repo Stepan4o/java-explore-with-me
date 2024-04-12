@@ -24,7 +24,7 @@ public class UserControllerAdmin {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public UserDto addNewUser(@RequestBody @Valid NewUserRequest userRequest) {
-        log.info("POST: /admin/users");
+        log.debug("POST: /admin/users");
         return userService.add(userRequest);
     }
 
@@ -34,14 +34,14 @@ public class UserControllerAdmin {
             @RequestParam(defaultValue = "0") @Min(0) Integer from,
             @RequestParam(defaultValue = "10") @Min(1) Integer size
     ) {
-        log.info("GET: /admin/users?ids={}&from={}&size={}", ids, from, size);
+        log.debug("GET: /admin/users?ids={}&from={}&size={}", ids, from, size);
         return userService.get(ids, from, size);
     }
 
     @DeleteMapping("/{userId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void removeById(@PathVariable Long userId) {
-        log.info("DELETE: /{}", userId);
+    public void removeById(@PathVariable @Min(1) Long userId) {
+        log.debug("DELETE: /admin/users/{}", userId);
         userService.remove(userId);
     }
 }

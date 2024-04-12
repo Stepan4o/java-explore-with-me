@@ -1,8 +1,6 @@
 package ru.practicum.explore_with_me.request.model;
 
-import lombok.Getter;
-import lombok.Setter;
-import lombok.ToString;
+import lombok.*;
 import ru.practicum.explore_with_me.event.model.Event;
 import ru.practicum.explore_with_me.user.model.User;
 
@@ -14,8 +12,8 @@ import java.time.LocalDateTime;
 @Getter
 @Setter
 @ToString
-//@AllArgsConstructor
-//@NoArgsConstructor
+@AllArgsConstructor
+@NoArgsConstructor
 public class ParticipationRequest {
 
     @Id

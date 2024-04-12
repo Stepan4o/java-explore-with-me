@@ -8,7 +8,6 @@ import ru.practicum.explore_with_me.compilation.model.Compilation;
 import ru.practicum.explore_with_me.event.dto.EventShortDto;
 
 import java.util.List;
-import java.util.Map;
 
 @UtilityClass
 public class CompilationMapper {
@@ -17,8 +16,8 @@ public class CompilationMapper {
                 newCompilationDto.isPinned(),
                 newCompilationDto.getTitle()
         );
-
     }
+
     public CompilationDto toDto(Compilation compilation, List<EventShortDto> eventsShortDto) {
         CompilationDto compilationDto = new CompilationDto();
         compilationDto.setId(compilation.getId());
@@ -27,8 +26,5 @@ public class CompilationMapper {
         compilationDto.setPinned(compilation.getPinned());
 
         return compilationDto;
-    }
-    public List<CompilationDto> toListDto(Map<Compilation, List<EventShortDto>> eventsShortDtoToCompilation) {
-        return null;
     }
 }

@@ -9,7 +9,6 @@ import ru.practicum.explore_with_me.request.dto.ParticipationRequestDto;
 import ru.practicum.explore_with_me.request.service.RequestService;
 
 import javax.validation.constraints.Min;
-import javax.validation.constraints.NotNull;
 import java.util.List;
 
 @Slf4j
@@ -25,9 +24,9 @@ public class RequestControllerPrivate {
     @ResponseStatus(HttpStatus.CREATED)
     public ParticipationRequestDto addNewRequest(
             @PathVariable @Min(1) Long userId,
-            @NotNull @RequestParam(name = "eventId", required = false) Long eventId
+            @RequestParam @Min(1) Long eventId
     ) {
-        log.info("POST: /users/{}/requests?eventId={}", userId, eventId);
+        log.debug("POST: /users/{}/requests?eventId={}", userId, eventId);
         return requestService.add(userId, eventId);
     }
 
@@ -36,7 +35,7 @@ public class RequestControllerPrivate {
             @PathVariable @Min(1) Long userId,
             @PathVariable @Min(1) Long requestId
     ) {
-        log.info("/users/{}/requests/{}/cancel", userId, requestId);
+        log.debug("PATCH: /users/{}/requests/{}/cancel", userId, requestId);
         return requestService.cancelRequest(userId, requestId);
     }
 
@@ -44,7 +43,7 @@ public class RequestControllerPrivate {
     public List<ParticipationRequestDto> getOwnerRequests(
             @PathVariable @Min(1) Long userId
     ) {
-        log.info("/users/{}/requests", userId);
+        log.debug("GET: /users/{}/requests", userId);
         return requestService.getOwnerRequests(userId);
     }
 }

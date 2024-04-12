@@ -9,7 +9,6 @@ import ru.practicum.explore_with_me.event.model.State;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 
 public interface EventRepository extends JpaRepository<Event, Long> {
     boolean existsByIdAndInitiatorId(long eventId, long userId);
@@ -30,4 +29,5 @@ public interface EventRepository extends JpaRepository<Event, Long> {
 
     Optional<Event> findByIdAndInitiatorId(long eventId, long userId);
 
+    boolean existsByCategoryId(long categoryId);
 }

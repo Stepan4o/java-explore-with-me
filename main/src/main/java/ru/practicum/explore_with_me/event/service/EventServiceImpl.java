@@ -1,7 +1,6 @@
 package ru.practicum.explore_with_me.event.service;
 
 import lombok.RequiredArgsConstructor;
-import org.aspectj.weaver.ast.Not;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -22,8 +21,6 @@ import ru.practicum.explore_with_me.event.model.Event;
 import ru.practicum.explore_with_me.event.model.UserStateAction;
 import ru.practicum.explore_with_me.event.repository.EventRepository;
 import ru.practicum.explore_with_me.exception.ConflictException;
-import ru.practicum.explore_with_me.exception.IncorrectlyMadeRequest;
-import ru.practicum.explore_with_me.exception.InvalidEventDateException;
 import ru.practicum.explore_with_me.exception.NotFoundException;
 import ru.practicum.explore_with_me.location.Location;
 import ru.practicum.explore_with_me.location.LocationMapper;
@@ -34,13 +31,13 @@ import ru.practicum.explore_with_me.user.model.User;
 import ru.practicum.explore_with_me.user.repository.UserRepository;
 
 import javax.persistence.criteria.Predicate;
-import javax.validation.ConstraintViolationException;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 
-import static ru.practicum.explore_with_me.event.model.AdminStateAction.*;
+import static ru.practicum.explore_with_me.event.model.AdminStateAction.PUBLISH_EVENT;
+import static ru.practicum.explore_with_me.event.model.AdminStateAction.REJECT_EVENT;
 import static ru.practicum.explore_with_me.event.model.State.*;
 import static ru.practicum.explore_with_me.event.model.UserStateAction.CANCEL_REVIEW;
 import static ru.practicum.explore_with_me.event.model.UserStateAction.SEND_TO_REVIEW;
@@ -60,10 +57,7 @@ public class EventServiceImpl implements EventService {
     @Override
     public EventFullDto add(NewEventDto newEventDto, Long userId) {
         validatedEventDate(newEventDto.getEventDate());
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new NotFoundException(String.format(
-                        ENTITY_NOT_FOUND, USER, userId
-                )));
+        User savedUser = getUserIfExists(userId);
         Category category = categoryRepository.findById(newEventDto.getCategory())
                 .orElseThrow(() -> new NotFoundException(String.format(
                         ENTITY_NOT_FOUND, CATEGORY, newEventDto.getCategory()
@@ -73,7 +67,7 @@ public class EventServiceImpl implements EventService {
 
         Event event = EventMapper.toEvent(newEventDto);
         event.setCategory(category);
-        event.setInitiator(user);
+        event.setInitiator(savedUser);
         event.setLocation(location);
         event.setState(PENDING);
         event.setCreatedOn(LocalDateTime.now());
@@ -81,24 +75,24 @@ public class EventServiceImpl implements EventService {
     }
 
     @Override
-    public List<EventFullDto> getFullInfo(AdminSearchEventsParams params) {
+    public List<EventFullDto> getFullInfoByAdminParams(AdminSearchEventsParams params) {
         LocalDateTime start = params.getRangeStart();
         LocalDateTime end = params.getRangeEnd();
 
         if (start == null) params.setRangeStart(LocalDateTime.now());
 
-        if (end != null && start.isAfter(end))
-            throw new IncorrectlyMadeRequest("Start time can't be after End time");
+        if (end != null && Objects.requireNonNull(start).isAfter(end))
+            throw new ConflictException("Start time can't be after End time");
 
         Pageable pageable = PageRequest.of(params.getFrom() / params.getSize(), params.getSize());
         Specification<Event> spec = Specification.where(null);
-        if (params.getRangeStart() != null) {
+
+        spec = spec.and((root, query, criteriaBuilder) ->
+                criteriaBuilder.greaterThanOrEqualTo(root.get("eventDate"), params.getRangeStart()));
+
+        if (end != null) {
             spec = spec.and((root, query, criteriaBuilder) ->
-                    criteriaBuilder.greaterThanOrEqualTo(root.get("eventDate"), params.getRangeStart()));
-        }
-        if (params.getRangeEnd() != null) {
-            spec = spec.and((root, query, criteriaBuilder) ->
-                    criteriaBuilder.lessThanOrEqualTo(root.get("eventDate"), params.getRangeEnd()));
+                    criteriaBuilder.lessThanOrEqualTo(root.get("eventDate"), end));
         }
         if (params.getUsers() != null) {
             spec = spec.and((root, query, criteriaBuilder) ->
@@ -117,10 +111,7 @@ public class EventServiceImpl implements EventService {
 
     @Override
     public EventFullDto updateAdminInfo(long eventId, UpdateEventRequest requestForUpdate) {
-        Event savedEvent = eventRepository.findById(eventId)
-                .orElseThrow(() -> new NotFoundException(String.format(
-                        ENTITY_NOT_FOUND, EVENT, eventId
-                )));
+        Event savedEvent = getEventIfExists(eventId);
 
         if (requestForUpdate.getCategory() != null) {
             long catId = requestForUpdate.getCategory();
@@ -136,8 +127,7 @@ public class EventServiceImpl implements EventService {
                     actualEventTime.plusHours(1) != requestForUpdate.getEventDate())
                 savedEvent.setEventDate(requestForUpdate.getEventDate());
 
-                // TODO нужно корректное сообщение написать
-            else throw new ConflictException("eventDate cant be before then after one hour of start event");
+            else throw new ConflictException("eventDate can't be earlier than one hour from the date of publication.");
         }
 
         if (requestForUpdate.getLocation() != null) {
@@ -165,16 +155,13 @@ public class EventServiceImpl implements EventService {
     }
 
     @Override
-    public EventFullDto updateUserInfo(long userId, long eventId, UpdateEventRequest requestForUpdate) {
-        Event savedEvent = eventRepository.findById(eventId)
-                .orElseThrow(() -> new NotFoundException(String.format(
-                        ENTITY_NOT_FOUND, EVENT, eventId
-                )));
+    public EventFullDto updateOwnerEvent(long userId, long eventId, UpdateEventRequest requestForUpdate) {
+        Event savedEvent = getEventIfExists(eventId);
         if (savedEvent.getInitiator().getId() != userId) {
-            throw new ConflictException("Owner only can update event info");
+            throw new ConflictException("Can be modified by owner only");
         }
 
-        if (savedEvent.getState() == PUBLISHED) throw new ConflictException("Event cant be modified");
+        if (savedEvent.getState() == PUBLISHED) throw new ConflictException("Published event can't be update");
 
         if (requestForUpdate.getStateAction() != null) {
             UserStateAction action = UserStateAction.toEnum(requestForUpdate.getStateAction());
@@ -183,20 +170,13 @@ public class EventServiceImpl implements EventService {
         }
 
         if (requestForUpdate.getCategory() != null) {
-            long catId = requestForUpdate.getCategory();
-            Category category = categoryRepository.findById(catId)
-                    .orElseThrow(() -> new NotFoundException(String.format(
-                            ENTITY_NOT_FOUND, CATEGORY, catId)
-                    ));
+            Category category = getCategoryIfExists(requestForUpdate.getCategory());
             savedEvent.setCategory(category);
         }
         if (requestForUpdate.getEventDate() != null) {
-            LocalDateTime actualEventTime = savedEvent.getEventDate();
-            if (actualEventTime.plusHours(2).isAfter(requestForUpdate.getEventDate()) ||
-                    actualEventTime.plusHours(2) != requestForUpdate.getEventDate())
-                savedEvent.setEventDate(requestForUpdate.getEventDate());
-                // TODO нужно корректное сообщение написать
-            else throw new ConflictException("eventDate cant be before then after two hours of start event");
+            LocalDateTime futureEventTime = requestForUpdate.getEventDate();
+            validatedEventDate(futureEventTime);
+            savedEvent.setEventDate(requestForUpdate.getEventDate());
         }
 
         updateEventFields(savedEvent, requestForUpdate);
@@ -212,17 +192,20 @@ public class EventServiceImpl implements EventService {
 
         if (start == null) params.setRangeStart(LocalDateTime.now());
 
-        if (end != null && start.isAfter(end))
-            throw new IncorrectlyMadeRequest("Start time can't be after End time");
+        if (end != null && Objects.requireNonNull(start).isAfter(end))
+            throw new ConflictException("Start time can't be after End time");
 
         Specification<Event> spec = (root, query, criteriaBuilder) -> {
             List<Predicate> row = new ArrayList<>();
+
             if (params.getCategories() != null) {
                 row.add(root.get("category").get("id").in(params.getCategories()));
             }
+
             if (params.getPaid() != null) {
                 row.add(criteriaBuilder.equal(root.get("paid"), params.getPaid()));
             }
+
             if (params.getOnlyAvailable() != null && params.getOnlyAvailable()) {
                 row.add(criteriaBuilder.and(
                         criteriaBuilder.greaterThanOrEqualTo(root.get("participantLimit"), 0),
@@ -235,7 +218,7 @@ public class EventServiceImpl implements EventService {
             if (params.getRangeEnd() != null) {
                 row.add(criteriaBuilder.lessThan(root.get("eventDate"), params.getRangeEnd()));
             }
-            if (params.getText() != null) {
+            if (params.getText() != null && !params.getText().isBlank()) {
                 String likeText = "%" + params.getText() + "%";
                 row.add(criteriaBuilder.or(
                         criteriaBuilder.like(root.get("annotation"), likeText),
@@ -258,33 +241,31 @@ public class EventServiceImpl implements EventService {
             }
         }
         List<Event> events = eventRepository.findAll(spec, pageable);
-        if (events.isEmpty()) {
-            return List.of();
-        } else {
-            List<String> uris = events.stream()
-                    .map(event -> String.format("/events/%s", event.getId()))
-                    .collect(Collectors.toList());
-            Optional<LocalDateTime> startTime = events.stream()
-                    .map(Event::getCreatedOn)
-                    .min(LocalDateTime::compareTo);
-            saveStats(params.getUri(), params.getIp());
+        if (events.isEmpty()) return List.of();
 
-            String response = Objects.requireNonNull(statsClient.getStats(
-                    startTime.get(),
-                    LocalDateTime.now(),
-                    uris,
-                    true
-            ).getBody()).toString();
+        List<String> uris = events.stream()
+                .map(event -> String.format("/events/%s", event.getId()))
+                .collect(Collectors.toList());
+        Optional<LocalDateTime> startTime = events.stream()
+                .map(Event::getCreatedOn)
+                .min(LocalDateTime::compareTo);
+        saveStats(params.getUri(), params.getIp());
 
-            Map<Long, Event> eventsMap = new HashMap<>();
-            for (Event event : events) eventsMap.put(event.getId(), event);
-            String[] lines = response.split("}");
-            addViewsToEvents(eventsMap, lines);
+        String response = Objects.requireNonNull(statsClient.getStats(
+                startTime.get(),
+                LocalDateTime.now(),
+                uris,
+                true
+        ).getBody()).toString();
 
-            return eventsMap.values().stream()
-                    .map(EventMapper::toShortDto)
-                    .collect(Collectors.toList());
-        }
+        Map<Long, Event> eventsMap = new HashMap<>();
+        for (Event event : events) eventsMap.put(event.getId(), event);
+        String[] lines = response.split("}");
+        addViewsToEvents(eventsMap, lines);
+
+        return eventsMap.values().stream()
+                .map(EventMapper::toShortDto)
+                .collect(Collectors.toList());
     }
 
     @Override
@@ -313,11 +294,7 @@ public class EventServiceImpl implements EventService {
 
     @Override
     public EventFullDto getOwnerEventById(long userId, long eventId) {
-        User owner = userRepository.findById(userId).orElseThrow(
-                () -> new NotFoundException(String.format(
-                        ENTITY_NOT_FOUND, USER, userId
-                ))
-        );
+        User owner = getUserIfExists(userId);
         Event ownerEvent = eventRepository.findByIdAndInitiatorId(eventId, owner.getId()).orElseThrow(
                 () -> new NotFoundException(String.format(
                         ENTITY_NOT_FOUND, EVENT, eventId
@@ -329,13 +306,11 @@ public class EventServiceImpl implements EventService {
     @Override
     public List<EventShortDto> getOwnerEvents(long userId, int from, int size) {
         Pageable pageable = PageRequest.of(from / size, size);
-        User owner = userRepository.findById(userId).orElseThrow(
-                () -> new NotFoundException(String.format(
-                        ENTITY_NOT_FOUND, USER, userId
-                ))
-        );
+        User owner = getUserIfExists(userId);
         List<Event> ownerEvents = eventRepository.findAllByInitiatorId(owner.getId(), pageable);
-        return ownerEvents.stream().map(EventMapper::toShortDto).collect(Collectors.toList());
+        return ownerEvents.stream()
+                .map(EventMapper::toShortDto)
+                .collect(Collectors.toList());
     }
 
     private Long parseViews(String body) {
@@ -352,7 +327,6 @@ public class EventServiceImpl implements EventService {
                 Event savedEvent = eventsMap.get(eventId);
                 savedEvent.setViews(views);
                 listOfSavedEvents.add(savedEvent);
-
                 eventsMap.put(eventId, savedEvent);
             }
         }
@@ -404,9 +378,31 @@ public class EventServiceImpl implements EventService {
         });
     }
 
+    private User getUserIfExists(long userId) {
+        return userRepository.findById(userId).orElseThrow(
+                () -> new NotFoundException(String.format(
+                        ENTITY_NOT_FOUND, USER, userId
+                ))
+        );
+    }
+
+    private Category getCategoryIfExists(long catId) {
+        return categoryRepository.findById(catId)
+                .orElseThrow(() -> new NotFoundException(String.format(
+                        ENTITY_NOT_FOUND, CATEGORY, catId)
+                ));
+    }
+
     private void validatedEventDate(LocalDateTime actualDateTime) {
         if (actualDateTime.isBefore(LocalDateTime.now().plusHours(2))) {
-            throw new IncorrectlyMadeRequest("Start time can't be after End time");
+            throw new ConflictException("Event date can't be earlier than two hours from the current moment");
         }
+    }
+
+    private Event getEventIfExists(long eventId) {
+        return eventRepository.findById(eventId)
+                .orElseThrow(() -> new NotFoundException(String.format(
+                        ENTITY_NOT_FOUND, EVENT, eventId
+                )));
     }
 }

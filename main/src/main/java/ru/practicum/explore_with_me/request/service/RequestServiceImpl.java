@@ -36,58 +36,46 @@ public class RequestServiceImpl implements RequestService {
 
     @Override
     public ParticipationRequestDto add(long userId, long eventId) {
-        User savedUser = userRepository.findById(userId)
-                .orElseThrow(() -> new NotFoundException(String.format(
-                        ENTITY_NOT_FOUND, USER, userId
-                )));
-        Event savedEvent = eventRepository.findById(eventId)
-                .orElseThrow(() -> new NotFoundException(String.format(
-                        ENTITY_NOT_FOUND, EVENT, eventId
-                )));
-//         инициатор события не может добавить запрос на участие в своём событии (Ожидается код ошибки 409)
-//         возможно existsByIdAndEventUserId
+        User savedUser = getUserIfExists(userId);
+        Event savedEvent = getEventIfExists(eventId);
+
         if (eventRepository.existsByIdAndInitiatorId(eventId, userId))
             throw new ConflictException("Initiator can't send request for own event");
 
-        //  нельзя добавить повторный запрос (Ожидается код ошибки 409)
         if (requestRepository.existsByEventIdAndRequesterId(eventId, userId))
             throw new ConflictException("Request already exists");
 
-//          нельзя участвовать в неопубликованном событии (Ожидается код ошибки 409)
         if (!eventRepository.existsByIdAndState(eventId, State.PUBLISHED))
             throw new ConflictException("Event is not published yet");
 
-//          если у события достигнут лимит запросов на участие - необходимо вернуть ошибку (Ожидается код ошибки 409)
         int limit = savedEvent.getParticipantLimit();
         if (limit != 0 && limit == requestRepository.countByEventIdAndStatus(eventId, RequestStatus.CONFIRMED))
             throw new ConflictException("Participant limit is already reached");
 
         ParticipationRequest request = new ParticipationRequest();
-        request.setRequester(savedUser);
-        request.setEvent(savedEvent);
-        request.setCreated(LocalDateTime.now());
 
-//  если для события отключена пре-модерация запросов на участие, то запрос должен автоматически перейти в состояние подтвержденного
         if (savedEvent.getRequestModeration() && savedEvent.getParticipantLimit() != 0) {
             request.setStatus(RequestStatus.PENDING);
         } else {
             request.setStatus(RequestStatus.CONFIRMED);
         }
+        request.setRequester(savedUser);
+        request.setEvent(savedEvent);
+        request.setCreated(LocalDateTime.now());
+
         return RequestMapper.toRequestDto(requestRepository.save(request));
     }
+
     @Override
     public EventRequestStatusUpdateResult updateRequestsStatus(
             long userId,
             long eventId,
             EventRequestStatusUpdateRequest request
     ) {
-        Event savedEvent = eventRepository.findById(eventId)
-                .orElseThrow(() -> new NotFoundException(String.format(
-                        ENTITY_NOT_FOUND, EVENT, eventId
-                )));
-        long requestLimit = requestRepository.countByEventIdAndStatus(eventId, CONFIRMED);
-        if (savedEvent.getParticipantLimit() <= requestLimit && savedEvent.getParticipantLimit() > 0) {
-            throw new ConflictException("participant limit was reached");
+        Event savedEvent = getEventIfExists(eventId);
+        long currentCount = requestRepository.countByEventIdAndStatus(eventId, CONFIRMED);
+        if (savedEvent.getParticipantLimit() <= currentCount && savedEvent.getParticipantLimit() > 0) {
+            throw new ConflictException("Participant limit was reached");
         }
         List<ParticipationRequest> requests = requestRepository.findAllByEventIdAndIdIn(
                 eventId,
@@ -98,9 +86,9 @@ public class RequestServiceImpl implements RequestService {
         List<ParticipationRequestDto> rejectedRequests = new ArrayList<>();
         for (ParticipationRequest req : requests) {
             if (req.getStatus() != RequestStatus.PENDING) throw new ConflictException(
-                    "Заявка долбжна быть в статусе PENDING"
+                    "Request should be pending"
             );
-            if (requestLimit < savedEvent.getParticipantLimit()) {
+            if (currentCount < savedEvent.getParticipantLimit()) {
                 req.setStatus(newStatus);
                 if (newStatus == CONFIRMED) {
                     confirmedRequests.add(RequestMapper.toDto(req));
@@ -108,7 +96,7 @@ public class RequestServiceImpl implements RequestService {
                 } else if (newStatus == REJECTED) {
                     rejectedRequests.add(RequestMapper.toDto(req));
                 }
-                requestLimit++;
+                currentCount++;
             } else {
                 req.setStatus(REJECTED);
                 rejectedRequests.add(RequestMapper.toDto(req));
@@ -120,11 +108,7 @@ public class RequestServiceImpl implements RequestService {
 
     @Override
     public List<ParticipationRequestDto> getOwnerRequests(long userId) {
-        User owner = userRepository.findById(userId).orElseThrow(
-                ()-> new NotFoundException(String.format(
-                        ENTITY_NOT_FOUND, USER, userId
-                ))
-        );
+        User owner = getUserIfExists(userId);
         return requestRepository.findAllByRequesterId(owner.getId()).stream()
                 .map(RequestMapper::toRequestDto)
                 .collect(Collectors.toList());
@@ -133,10 +117,7 @@ public class RequestServiceImpl implements RequestService {
     @Override
     @Transactional(readOnly = true)
     public List<ParticipationRequestDto> getOwnerEventRequests(long userId, long eventId) {
-        User owner = userRepository.findById(userId)
-                .orElseThrow(() -> new NotFoundException(String.format(
-                        ENTITY_NOT_FOUND, USER, userId
-                )));
+        User owner = getUserIfExists(userId);
         Event ownerEvent = eventRepository.findByIdAndInitiatorId(eventId, owner.getId())
                 .orElseThrow(() -> new NotFoundException(String.format(
                         ENTITY_NOT_FOUND, EVENT, eventId
@@ -154,7 +135,22 @@ public class RequestServiceImpl implements RequestService {
                         ENTITY_NOT_FOUND, REQUEST, requestId
                 )));
         savedRequest.setStatus(CANCELED);
+        requestRepository.save(savedRequest);
         return RequestMapper.toRequestDto(savedRequest);
+    }
+
+    private User getUserIfExists(long userId) {
+        return userRepository.findById(userId)
+                .orElseThrow(() -> new NotFoundException(String.format(
+                        ENTITY_NOT_FOUND, USER, userId
+                )));
+    }
+
+    private Event getEventIfExists(long eventId) {
+        return eventRepository.findById(eventId)
+                .orElseThrow(() -> new NotFoundException(String.format(
+                        ENTITY_NOT_FOUND, EVENT, eventId
+                )));
     }
 }
 

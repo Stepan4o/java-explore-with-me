@@ -30,8 +30,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public List<UserDto> get(List<Long> ids, Integer from, Integer size) {
-        Pageable pageable = PageRequest.of(
-                from / size, size);
+        Pageable pageable = PageRequest.of(from / size, size);
         if (ids != null) {
             return repository.findAllByIdIn(ids).stream()
                     .map(UserMapper::toUserDto)

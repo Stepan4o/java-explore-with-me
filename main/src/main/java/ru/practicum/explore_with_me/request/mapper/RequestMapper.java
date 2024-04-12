@@ -7,7 +7,6 @@ import ru.practicum.explore_with_me.request.model.ParticipationRequest;
 @UtilityClass
 public class RequestMapper {
 
-    // TODO навести порядок
     public ParticipationRequestDto toRequestDto(ParticipationRequest request) {
         ParticipationRequestDto requestDto = new ParticipationRequestDto();
         requestDto.setId(request.getId());
@@ -17,10 +16,6 @@ public class RequestMapper {
         requestDto.setStatus(request.getStatus());
 
         return requestDto;
-    }
-
-    public ParticipationRequest request(ParticipationRequestDto requestDto) {
-        return new ParticipationRequest();
     }
 
     public ParticipationRequestDto toDto(ParticipationRequest request) {

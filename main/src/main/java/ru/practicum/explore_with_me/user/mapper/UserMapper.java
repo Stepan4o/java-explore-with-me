@@ -9,15 +9,6 @@ import ru.practicum.explore_with_me.user.model.User;
 @UtilityClass
 public class UserMapper {
 
-    public User toUser(UserDto userDto) {
-        User user = new User();
-        user.setId(userDto.getId());
-        user.setName(userDto.getName());
-        user.setEmail(userDto.getEmail());
-
-        return user;
-    }
-
     public UserShortDto toUserShortDto(User user) {
         UserShortDto userShortDto = new UserShortDto();
         userShortDto.setId(user.getId());
