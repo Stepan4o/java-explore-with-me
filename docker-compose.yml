@@ -1,7 +1,7 @@
 version: '3.1'
 services:
   stats-server:
-    build: ./stats/server
+    build: stats/server
     image: stats-server-image
     container_name: stats-server-container
     ports:
@@ -20,9 +20,10 @@ services:
       - POSTGRES_DB=ewm-stats
       - POSTGRES_USER=root
       - POSTGRES_PASSWORD=root
+#      - TZ=Europe/Moscow
 
   ewm-service:
-    build: ./main
+    build: main
     image: main-image
     container_name: main-container
     ports:
@@ -43,3 +44,4 @@ services:
       - POSTGRES_DB=ewm-main
       - POSTGRES_USER=root
       - POSTGRES_PASSWORD=root
+#      - TZ=Europe/Moscow
