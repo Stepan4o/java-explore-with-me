@@ -60,6 +60,7 @@ public class Event {
     @Column(name = "request_moderation")
     private Boolean requestModeration;
 
+    @Column(name = "confirmed_request")
     private int confirmedRequest = 0;
 
     @Enumerated(EnumType.STRING)
