@@ -26,7 +26,7 @@ public class RequestControllerPrivate {
             @PathVariable @Min(1) Long userId,
             @RequestParam @Min(1) Long eventId
     ) {
-        log.debug("POST: /users/{}/requests?eventId={}", userId, eventId);
+        log.info("POST: /users/{}/requests?eventId={}", userId, eventId);
         return requestService.add(userId, eventId);
     }
 
@@ -35,7 +35,7 @@ public class RequestControllerPrivate {
             @PathVariable @Min(1) Long userId,
             @PathVariable @Min(1) Long requestId
     ) {
-        log.debug("PATCH: /users/{}/requests/{}/cancel", userId, requestId);
+        log.info("PATCH: /users/{}/requests/{}/cancel", userId, requestId);
         return requestService.cancelRequest(userId, requestId);
     }
 

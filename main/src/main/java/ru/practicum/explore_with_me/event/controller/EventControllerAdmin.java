@@ -57,7 +57,7 @@ public class EventControllerAdmin {
             @PathVariable @Min(1) Long eventId,
             @RequestBody @Valid UpdateEventRequest requestForUpdate
     ) {
-        log.debug("PATCH: /admin/events/{}", eventId);
+        log.info("PATCH: /admin/events/{}", eventId);
         return eventService.updateAdminInfo(eventId, requestForUpdate);
     }
 }

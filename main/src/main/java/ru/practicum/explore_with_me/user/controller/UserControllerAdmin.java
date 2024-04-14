@@ -24,7 +24,7 @@ public class UserControllerAdmin {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public UserDto addNewUser(@RequestBody @Valid NewUserRequest userRequest) {
-        log.debug("POST: /admin/users");
+        log.info("POST: /admin/users");
         return userService.add(userRequest);
     }
 
@@ -41,7 +41,7 @@ public class UserControllerAdmin {
     @DeleteMapping("/{userId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void removeById(@PathVariable @Min(1) Long userId) {
-        log.debug("DELETE: /admin/users/{}", userId);
+        log.info("DELETE: /admin/users/{}", userId);
         userService.remove(userId);
     }
 }

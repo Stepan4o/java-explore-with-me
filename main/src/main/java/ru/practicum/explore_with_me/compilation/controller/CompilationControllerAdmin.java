@@ -26,7 +26,7 @@ public class CompilationControllerAdmin {
     public CompilationDto addNewCompilation(
             @RequestBody @Valid NewCompilationDto compilationDto
     ) {
-        log.debug("POST: /admin/compilations");
+        log.info("POST: /admin/compilations");
         return compilationService.addNewCompilation(compilationDto);
     }
 
@@ -35,7 +35,7 @@ public class CompilationControllerAdmin {
     public void deleteCompilationById(
             @PathVariable @Min(1) Long compId
     ) {
-        log.debug("DELETE: /admin/compilations/{}", compId);
+        log.info("DELETE: /admin/compilations/{}", compId);
         compilationService.deleteCompilationById(compId);
     }
 
@@ -44,9 +44,7 @@ public class CompilationControllerAdmin {
             @RequestBody @Valid UpdateCompilationRequest updateRequest,
             @PathVariable @Min(1) Long compId
     ) {
-        log.debug("PATCH: /admin/compilations/{}", compId);
+        log.info("PATCH: /admin/compilations/{}", compId);
         return compilationService.updateCompilationInfo(compId, updateRequest);
     }
-
-
 }

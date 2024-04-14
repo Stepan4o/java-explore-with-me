@@ -27,6 +27,7 @@ public class ErrorHandler {
     public ErrorResponse handleInvalidEmail(
             final RuntimeException exception
     ) {
+        log.error(exception.getMessage());
         return ErrorResponse.builder()
                 .status(HttpStatus.CONFLICT.getReasonPhrase().toUpperCase())
                 .reason("Integrity constraint has been violated.")
@@ -40,6 +41,7 @@ public class ErrorHandler {
     public ErrorResponse handleNotFoundException(
             final NotFoundException exception
     ) {
+        log.error(exception.getMessage());
         return ErrorResponse.builder()
                 .status(HttpStatus.NOT_FOUND.getReasonPhrase().toUpperCase())
                 .reason("The required object was not found.")
@@ -71,7 +73,7 @@ public class ErrorHandler {
             log.error("Invalid input '{}' -> {}", error.getField(), error.getDefaultMessage());
             message = String.format("Incorrect input data %s -> %s", error.getField(), error.getDefaultMessage());
         } else {
-            log.info(exception.getMessage());
+            log.error(exception.getMessage());
             message = exception.getMessage();
         }
         return ErrorResponse.builder()

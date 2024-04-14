@@ -62,7 +62,7 @@ public class EventControllerPublic {
 
     @GetMapping("/{eventId}")
     public EventFullDto getEventById(@PathVariable @Min(1) Long eventId) {
-        log.info("GET: /events/{}", eventId);
+        log.debug("GET: /events/{}", eventId);
         return eventService.getEventById(eventId, request.getRemoteAddr());
     }
 }

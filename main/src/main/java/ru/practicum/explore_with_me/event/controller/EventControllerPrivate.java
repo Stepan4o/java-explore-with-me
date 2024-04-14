@@ -44,7 +44,7 @@ public class EventControllerPrivate {
             @PathVariable @Min(1) Long eventId,
             @RequestBody @Valid UpdateEventRequest requestForUpdate
     ) {
-        log.debug("PATCH: /users/{}/events/{}", userId, eventId);
+        log.info("PATCH: /users/{}/events/{}", userId, eventId);
         return eventService.updateOwnerEvent(userId, eventId, requestForUpdate);
     }
 
@@ -54,7 +54,7 @@ public class EventControllerPrivate {
             @PathVariable @Min(1) Long eventId,
             @RequestBody EventRequestStatusUpdateRequest request
     ) {
-        log.debug("GET: /users/{}/events/{}/requests", userId, eventId);
+        log.info("GET: /users/{}/events/{}/requests", userId, eventId);
         return requestService.updateRequestsStatus(userId, eventId, request);
     }
 
@@ -73,7 +73,7 @@ public class EventControllerPrivate {
             @PathVariable @Min(1) Long userId,
             @PathVariable @Min(1) Long eventId
     ) {
-        log.info("GET: /users/{}/events/{}", userId, eventId);
+        log.debug("GET: /users/{}/events/{}", userId, eventId);
         return eventService.getOwnerEventById(userId, eventId);
     }
 

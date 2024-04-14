@@ -25,7 +25,7 @@ public class StatsController {
     @PostMapping("/hit")
     @ResponseStatus(HttpStatus.CREATED)
     public void saveHit(@Valid @RequestBody EndpointHitDto hitDto) {
-        log.debug("POST: /hit ");
+        log.info("POST: /hit{}", hitDto.getUri());
         service.saveHit(hitDto);
     }
 
@@ -35,9 +35,10 @@ public class StatsController {
             @RequestParam @DateTimeFormat(pattern = TIME_PATTERN) LocalDateTime end,
             @RequestParam(required = false) List<String> uris,
             @RequestParam(defaultValue = "false") Boolean unique) {
-        log.debug("GET: /stats?start={}&end={}&uris={}&unique={}", start, end, uris, unique);
+
         if (start.isAfter(end)) throw new InvalidDateTimeException();
 
+        log.debug("GET: /stats?start={}&end={}&uris={}&unique={}", start, end, uris, unique);
         return service.getStats(start, end, uris, unique);
     }
 }
