@@ -28,6 +28,7 @@ import ru.practicum.explore_with_me.location.LocationMapper;
 import ru.practicum.explore_with_me.location.LocationRepository;
 import ru.practicum.explore_with_me.stats.client.StatsClient;
 import ru.practicum.explore_with_me.stats.dto.EndpointHitDto;
+import ru.practicum.explore_with_me.stats.dto.ViewStatsDto;
 import ru.practicum.explore_with_me.user.model.User;
 import ru.practicum.explore_with_me.user.repository.UserRepository;
 
@@ -252,17 +253,15 @@ public class EventServiceImpl implements EventService {
                 .min(LocalDateTime::compareTo);
         saveStats(params.getUri(), params.getIp());
 
-        String response = Objects.requireNonNull(statsClient.getStats(
+        Map<Long, Event> eventsMap = new HashMap<>();
+        for (Event event : events) eventsMap.put(event.getId(), event);
+        List<ViewStatsDto> stats = statsClient.getStats(
                 startTime.get(),
                 LocalDateTime.now(),
                 uris,
                 true
-        ).getBody()).toString();
-
-        Map<Long, Event> eventsMap = new HashMap<>();
-        for (Event event : events) eventsMap.put(event.getId(), event);
-        String[] lines = response.split("}");
-        addViewsToEvents(eventsMap, lines);
+        );
+        addViewsToEvents(eventsMap, stats);
 
         return eventsMap.values().stream()
                 .map(EventMapper::toShortDto)
@@ -277,20 +276,17 @@ public class EventServiceImpl implements EventService {
                 )));
         String uri = String.format("/events/%d", eventId);
         saveStats(uri, ip);
-        String body = Objects.requireNonNull(statsClient.getStats(
+        List<ViewStatsDto> stats = statsClient.getStats(
                 savedEvent.getCreatedOn(),
                 LocalDateTime.now(),
                 List.of(uri),
                 true
-        ).getBody()).toString();
-
-        Long views = parseViews(body);
-        savedEvent.setViews(views);
-        eventRepository.save(savedEvent);
-        EventFullDto eventFullDtoWithViews = EventMapper.toEventFullDto(savedEvent);
-        eventFullDtoWithViews.setViews(views);
-
-        return eventFullDtoWithViews;
+        );
+        if (stats.size() == 1) {
+            savedEvent.setViews(stats.get(0).getHits());
+            eventRepository.save(savedEvent);
+        }
+        return EventMapper.toEventFullDto(savedEvent);
     }
 
     @Override
@@ -314,17 +310,14 @@ public class EventServiceImpl implements EventService {
                 .collect(Collectors.toList());
     }
 
-    private Long parseViews(String body) {
-        return Long.parseLong(body.substring(body.lastIndexOf("=") + 1, body.length() - 2));
-    }
-
-    private void addViewsToEvents(Map<Long, Event> eventsMap, String[] lines) {
+    private void addViewsToEvents(Map<Long, Event> eventsMap, List<ViewStatsDto> stats) {
         long eventId, views;
         List<Event> listOfSavedEvents = new ArrayList<>();
-        for (int i = 0; i < lines.length - 1; i++) {
-            views = Long.parseLong(lines[i].substring(lines[i].lastIndexOf("=") + 1));
-            eventId = Long.parseLong(lines[i].substring(lines[i].lastIndexOf("/") + 1, lines[i].lastIndexOf(",")));
-            if (eventsMap.containsKey(eventId)) {
+        for (ViewStatsDto stat : stats) {
+            String uri = stat.getUri();
+            eventId = Long.parseLong(uri.substring(uri.lastIndexOf("/") + 1));
+            views = stat.getHits();
+            if (eventsMap.containsKey(views)) {
                 Event savedEvent = eventsMap.get(eventId);
                 savedEvent.setViews(views);
                 listOfSavedEvents.add(savedEvent);
