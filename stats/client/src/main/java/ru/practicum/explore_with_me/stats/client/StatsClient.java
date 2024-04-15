@@ -1,20 +1,28 @@
 package ru.practicum.explore_with_me.stats.client;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.http.client.HttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
+import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 import ru.practicum.explore_with_me.stats.dto.EndpointHitDto;
+import ru.practicum.explore_with_me.stats.dto.ViewStatsDto;
 
 import java.time.LocalDateTime;
-import java.util.HashMap;
+import java.time.format.DateTimeFormatter;
+import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 
+@Service
 public class StatsClient {
-    private final String serverUrl = "http://localhost:9090";
+    @Value("${client.url}")
+    private String serverUrl;
     private final RestTemplate rest;
+    private final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     public StatsClient() {
         this.rest = new RestTemplate();
@@ -27,14 +35,21 @@ public class StatsClient {
         return rest.postForEntity(serverUrl + "/hit", hitDto, Object.class);
     }
 
-    public ResponseEntity<Object> getStats(LocalDateTime start, LocalDateTime end, List<String> uris, boolean unique) {
-        HashMap<String, Object> params = new HashMap<>(
-                Map.of(
-                        "start", start,
-                        "end", end,
-                        "uris", uris,
-                        "unique", unique
-                ));
-        return rest.getForEntity(serverUrl + "/stats", Object.class, params);
+    public List<ViewStatsDto> getStats(LocalDateTime start, LocalDateTime end, List<String> uris, Boolean unique) {
+        StringBuilder url = new StringBuilder(serverUrl + "/stats?");
+        for (String uri : uris) {
+            url.append("&uris=").append(uri);
+        }
+        url.append("&unique=").append(unique);
+        url.append("&start=").append(start.format(formatter));
+        url.append("&end=").append(end.format(formatter));
+
+        ResponseEntity<String> response = rest.getForEntity(url.toString(), String.class);
+        ObjectMapper mapper = new ObjectMapper();
+        try {
+            return Arrays.asList(mapper.readValue(response.getBody(), ViewStatsDto[].class));
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e.getMessage());
+        }
     }
 }
