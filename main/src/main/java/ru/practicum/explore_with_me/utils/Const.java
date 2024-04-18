@@ -7,5 +7,7 @@ public class Const {
     public static final String EVENT = "Event";
     public static final String REQUEST = "Request";
     public static final String CATEGORY = "Category";
+    public static final String COMMENT = "Comment";
+    public static final String OWNER_ONLY = "Can be modified by owner only";
 
 }

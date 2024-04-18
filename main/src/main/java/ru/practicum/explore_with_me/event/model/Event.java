@@ -66,6 +66,9 @@ public class Event {
     @Enumerated(EnumType.STRING)
     private State state;
 
+//    @ElementCollection
+//    private List<Comment> comments;
+
     @Size(min = 3, max = 120)
     @Column(name = "title")
     private String title;

@@ -160,7 +160,7 @@ public class EventServiceImpl implements EventService {
     public EventFullDto updateOwnerEvent(long userId, long eventId, UpdateEventRequest requestForUpdate) {
         Event savedEvent = getEventIfExists(eventId);
         if (savedEvent.getInitiator().getId() != userId) {
-            throw new ConflictException("Can be modified by owner only");
+            throw new ConflictException(OWNER_ONLY);
         }
 
         if (savedEvent.getState() == PUBLISHED) throw new ConflictException("Published event can't be update");

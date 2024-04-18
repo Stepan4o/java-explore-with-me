@@ -11,9 +11,11 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
+import javax.validation.ConstraintViolation;
 import javax.validation.ConstraintViolationException;
 import java.time.LocalDateTime;
 import java.util.Objects;
+import java.util.Set;
 
 @Slf4j
 @RestControllerAdvice
@@ -72,6 +74,15 @@ public class ErrorHandler {
             FieldError error = Objects.requireNonNull(((MethodArgumentNotValidException) exception).getFieldError());
             log.error("Invalid input '{}' -> {}", error.getField(), error.getDefaultMessage());
             message = String.format("Incorrect input data %s -> %s", error.getField(), error.getDefaultMessage());
+        } else if (exception instanceof ConstraintViolationException) {
+            Set<ConstraintViolation<?>> errors = ((ConstraintViolationException) exception).getConstraintViolations();
+            StringBuilder res = new StringBuilder();
+            for (ConstraintViolation<?> error : errors) {
+                String param = error.getPropertyPath().toString();
+                res.append("param: '").append(param.substring(param.lastIndexOf(".") + 1)).append("' ");
+                res.append("error: '").append(error.getMessage()).append("' ");
+            }
+            message = res.toString();
         } else {
             log.error(exception.getMessage());
             message = exception.getMessage();
