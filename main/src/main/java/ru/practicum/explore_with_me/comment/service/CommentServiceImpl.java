@@ -86,8 +86,8 @@ public class CommentServiceImpl implements CommentService {
     @Override
     public CommentDto getCommentByOwnerId(long userId, long commentId) {
         User owner = getUserIfExists(userId);
-        Comment savedComment = commentRepository.findByIdAndAuthorId(commentId, owner.getId()).
-                orElseThrow(() -> new NotFoundException(String.format(
+        Comment savedComment = commentRepository.findByIdAndAuthorId(commentId, owner.getId()).orElseThrow(
+                () -> new NotFoundException(String.format(
                         ENTITY_NOT_FOUND, COMMENT, commentId
                 )));
         return CommentMapper.toDto(savedComment, savedComment.getEvent().getId());
