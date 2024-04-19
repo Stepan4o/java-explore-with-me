@@ -1,6 +1,7 @@
 package ru.practicum.explore_with_me.comment.service;
 
 import lombok.RequiredArgsConstructor;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -119,8 +120,9 @@ public class CommentServiceImpl implements CommentService {
     public List<CommentDto> getAllCommentsByParam(long eventId, String text, int from, int size) {
         Pageable pageable = PageRequest.of(from / size, size);
         Event savedEvent = getEventIfExists(eventId);
+        System.out.println(text);
 
-        if (text != null && !text.isBlank())
+        if (StringUtils.isNotBlank(text))
             return commentRepository.searchByText(text.toLowerCase(), eventId, pageable).stream()
                     .map(x -> CommentMapper.toDto(x, savedEvent.getId()))
                     .collect(Collectors.toList());
