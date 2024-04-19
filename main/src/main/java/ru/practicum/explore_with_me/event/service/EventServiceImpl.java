@@ -1,6 +1,7 @@
 package ru.practicum.explore_with_me.event.service;
 
 import lombok.RequiredArgsConstructor;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -160,7 +161,7 @@ public class EventServiceImpl implements EventService {
     public EventFullDto updateOwnerEvent(long userId, long eventId, UpdateEventRequest requestForUpdate) {
         Event savedEvent = getEventIfExists(eventId);
         if (savedEvent.getInitiator().getId() != userId) {
-            throw new ConflictException("Can be modified by owner only");
+            throw new ConflictException(OWNER_ONLY);
         }
 
         if (savedEvent.getState() == PUBLISHED) throw new ConflictException("Published event can't be update");
@@ -220,7 +221,8 @@ public class EventServiceImpl implements EventService {
             if (params.getRangeEnd() != null) {
                 row.add(criteriaBuilder.lessThan(root.get("eventDate"), params.getRangeEnd()));
             }
-            if (params.getText() != null && !params.getText().isBlank()) {
+//            if (params.getText() != null && !params.getText().isBlank()) {
+            if (StringUtils.isNotBlank(params.getText())) {
                 String likeText = "%" + params.getText() + "%";
                 row.add(criteriaBuilder.or(
                         criteriaBuilder.like(root.get("annotation"), likeText),
