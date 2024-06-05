@@ -1,2 +1,13 @@
-# java-explore-with-me
-Template repository for ExploreWithMe project.
+# Explore With Me
+Приложение-афиша, где пользователи имеют возможность создавать мероприятия и собирать компанию для участия в них, или же принимать участие в уже созданных мероприятиях другими пользователями.
+
+## Стек  
+- Java 11
+- PostgreSQL
+- Hibernate, JPA
+- Spring Boot
+- Maven
+- REST API
+- Docker
+- Lombok
+- Postman
